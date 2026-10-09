@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+{% block title %}Phishing Detector{% endblock %}
+{% block content %}
+
+<section class="hero wrap" id="check">
+  <h1 class="hero__title reveal">Is that link safe or a <span class="hero__title-accent">scam</span>?</h1>
+  <p class="hero__lede reveal" style="--in-delay:60ms">Paste a web address to check it. We'll explain in
+    plain English what looks safe, what looks suspicious, and why.</p>
+
+  <div class="hero__form reveal" style="--in-delay:120ms">
+    {% with check_variant = 'hero' %}{% include "_check.html" %}{% endwith %}
+    {# confirm_note: a link from elsewhere to /scan or /result lands here with
+       the address filled in; the check starts only when the visitor asks. #}
+    <p class="check__note" {% if confirm_note %}role="status"{% endif %}>{% if confirm_note %}<strong>{{ confirm_note }}</strong> {% endif %}We inspect the page without entering passwords or filling in forms.</p>
+  </div>
+
+  {# The live dissection. It starts filled with a worked example rather than
+     waiting for someone to type, because the lesson it teaches is the most
+     valuable thing on this page and most people never type anything at all. #}
+  <div class="plate reveal" id="demo" style="--in-delay:180ms">
+    <div class="plate__panel" id="demo-panel">
+      <p class="demo__label" id="demo-label">See how an address is put together. Try an example:</p>
+      {# Three addresses that between them contain every trick worth knowing, and
+         one honest control. Clicking one fills the field above rather than
+         painting this box directly, so there is a single code path and the
+         person can go straight on to check it. #}
+      <div class="tryrow">
+        <button class="try" type="button" data-kind="danger"
+                data-url="https://secure.paypal.com.account-verify.co/login">A brand before the real domain</button>
+        <button class="try" type="button" data-kind="unsure"
+                data-url="https://microsoft-login.web.app/signin">A brand on a free subdomain</button>
+        <button class="try" type="button" data-kind="safe"
+                data-url="https://www.paypal.com/signin">The company's real domain</button>
+      </div>
+      {# One live region around both: the parts and the sentence explaining them
+         change together, and announcing only the parts leaves the lesson out. #}
+      <div aria-live="polite">
+        <div class="specimen" id="demo-specimen">
+          <span class="specimen__q">https://</span><wbr><span class="specimen__host">example.com</span><wbr><span class="specimen__q">/login</span>
+        </div>
+        <p class="specimen__note" id="demo-note">The marked part is <b>the site you are really
+          visiting</b>. Everything before it can be set to anything at all.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% include "_features.html" %}
+
+{# --------------------------------------------------------------------------
+   Frequently asked questions. Everything that used to be scattered across the
+   page as a foldout lives here instead, in one column, in the order somebody
+   meeting this tool would think to ask.
+--------------------------------------------------------------------------- #}
+<section class="band wrap">
+  <h2 class="band__title faq__title reveal">Frequently asked questions</h2>
+
+  <div class="faq reveal" style="--in-delay:60ms">
+    <details class="qa">
+      <summary>What is a phishing site?<span class="qa__chev" aria-hidden="true"></span></summary>
+      <div class="qa__reveal">
+        <div class="qa__body">
+          <p>A fake copy of a real site (your bank, your email, a delivery company) built to make
+            you type a password or card number into it. They are usually days old and usually
+            look convincing.</p>
+          <p>This tool looks at one the way an investigator would: who registered the address,
+            how old it is, what the page asks for, and whether it borrows another company's
+            images. Then it explains what it found.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="qa">
+      <summary>How do I read an address myself?<span class="qa__chev" aria-hidden="true"></span></summary>
+      <div class="qa__reveal">
+        <div class="qa__body">
+          <p>Look for the registered domain in the address. Its ending may have several parts,
+            such as co.uk, so counting the last two words does not always work. A familiar
+            company name placed before the registered domain does not prove ownership. In
+            <b>secure.paypal.com.account-verify.co</b> the site is account-verify.co, and every
+            reassuring word in front of it was typed by whoever set the address up.</p>
+          <p>The box at the top of this page marks that part for any address you paste, so you
+            can see where it falls before you decide anything.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="qa">
+      <summary>Is it safe to paste a suspicious link here?<span class="qa__chev" aria-hidden="true"></span></summary>
+      <div class="qa__reveal">
+        <div class="qa__body">
+          <p>The checker fetches the page in a restricted environment, follows redirects, and inspects
+            the returned content. It does not fill in forms or enter credentials, and downloads
+            are blocked. When enabled, it can run page scripts to inspect content that needs them.
+            The suspicious page is not opened in your browser.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="qa">
+      <summary>What happens when the rules and the model disagree?<span class="qa__chev" aria-hidden="true"></span></summary>
+      <div class="qa__reveal">
+        <div class="qa__body">
+          <p>Legitimate sign-in pages and credential phishing can look almost identical from the
+            outside, so a fixed rule and the scoring model sometimes land on different sides of a
+            case. A confident rule, in either direction, still wins - a known-good domain is not
+            recoloured by a nervous score. And when the checks look at the evidence and cannot
+            decide, the page says exactly that rather than letting the score pick a word for it -
+            so "not sure" means the checks were unsure, not that the number was close.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="qa">
+      <summary>What are the exact limits on every check?<span class="qa__chev" aria-hidden="true"></span></summary>
+      <div class="qa__reveal">
+        <div class="qa__body">
+          <dl class="limits-list">
+            {% for k, v in envelope %}
+            <div class="limits-list__row">
+              <dt>{{ k }}</dt>
+              <dd class="mono">{{ v }}</dd>
+            </div>
+            {% endfor %}
+          </dl>
+        </div>
+      </div>
+    </details>
+
+    <details class="qa">
+      <summary>What happens to the links I check?<span class="qa__chev" aria-hidden="true"></span></summary>
+      <div class="qa__reveal">
+        <div class="qa__body">
+          <p>The address goes to this site's server, which visits the page itself, not through
+            your browser and without your cookies or logins, so the site you are checking sees
+            a visit from the checker, not from you. To check the domain, the server also asks
+            outside services about it: domain registries, public certificate logs, DNS and a
+            network-ownership lookup, and Google Safe Browsing if this site has it set up.</p>
+          {% if feedback_enabled %}
+          <p>This copy of the checker keeps the evidence it collects on its server, so a
+            result can be reported and reviewed later. Use Report a problem on a result to
+            flag a wrong verdict or incorrect evidence.</p>
+          {% else %}
+          <p>Nothing about your check is kept on the server after your result has been
+            shown, or after two minutes if it never is. Like any website, the hosting provider's request logs record the
+            addresses requested, which include the link you checked, for a limited time.</p>
+          {% endif %}
+          <p>Your results are kept only in this browser, under History in the header, where
+            any of them can be renamed or removed. Removing one deletes it and its saved
+            result from this browser.</p>
+        </div>
+      </div>
+    </details>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="closer reveal">
+    <h2 class="closer__title">Have a link that should be checked?</h2>
+    <p class="closer__lede">Paste the address to see what the checker finds.</p>
+    <a class="cta" href="#check">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M12 19V5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="m6 11 6-6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Check link</span>
+    </a>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+{% if input_error %}
+<script nonce="{{ csp_nonce }}">
+/* A refused address is shown at the URL of the form post, /submit, so
+   reloading asked to resend the form. The page stays as it is; the address
+   bar says "/", and a reload is a clean front page. */
+history.replaceState(null, "", "/");
+</script>
+{% endif %}
+<script nonce="{{ csp_nonce }}">
+/* The live dissection under the field.
+
+   The split comes from the server, because deciding where "a.b.co.uk" ends
+   needs the public suffix list and a page that marked the wrong slice would
+   teach exactly the misreading this tool exists to correct. If that request
+   cannot be made, the whole hostname is marked instead: coarser, but never
+   wrong, and it still answers "is this really paypal.com".
+
+   The worked example stays until the first real address arrives, and comes
+   back when the field is emptied. */
+(function () {
+  var input = document.querySelector(".check__input");
+  var out = document.getElementById("demo-specimen");
+  var note = document.getElementById("demo-note");
+  var label = document.getElementById("demo-label");
+  var panel = document.getElementById("demo-panel");
+  if (!input || !out || !note) return;
+
+  var seed = { html: out.innerHTML, note: note.innerHTML, label: label.textContent };
+  var timer = null;
+  var inflight = null;
+
+  /* Each part is followed by a <wbr>, so a long address wraps between its
+     parts rather than through the middle of the domain. */
+  function part(cls, text) {
+    var el = document.createElement("span");
+    el.className = cls;
+    el.textContent = text;
+    return el;
+  }
+  function add(el, cls, text) {
+    el.appendChild(part(cls, text));
+    el.appendChild(document.createElement("wbr"));
+  }
+
+  function paint(p) {
+    out.textContent = "";
+    if (p.scheme) add(out, "specimen__q", p.scheme + "://");
+    if (p.userinfo) add(out, "specimen__q", p.userinfo + "@");
+    if (p.subdomain) add(out, "specimen__q", p.subdomain + ".");
+    add(out, "specimen__host", p.registrable || p.hostname);
+    if (p.port) add(out, "specimen__q", ":" + p.port);
+    if (p.rest) out.appendChild(part("specimen__q", p.rest));
+
+    note.textContent = "";
+    note.appendChild(document.createTextNode("The marked part is "));
+    var b = document.createElement("b");
+    b.textContent = "the site you would really visit";
+    note.appendChild(b);
+    var tail;
+    if (p.provider) {
+      tail = ". It is a free address handed out by " + p.provider + ", so nobody had to register "
+        + "it or prove who they are to get it.";
+    } else if (panel && panel.dataset.kind === "danger") {
+      tail = ". Everything before it can be set to anything at all, so this address is not "
+        + "PayPal. The site is " + p.registrable + ".";
+    } else {
+      tail = ". Everything around it can be set to anything at all.";
+    }
+    note.appendChild(document.createTextNode(tail));
+    label.textContent = panel && panel.dataset.kind ? "Example address. This has not been checked." : "Your address. This has not been checked yet.";
+  }
+
+  function reset() {
+    out.innerHTML = seed.html;
+    note.innerHTML = seed.note;
+    label.textContent = seed.label;
+  }
+
+  /* Same surgery the server does, minus the suffix list: used only when the
+     request fails, and deliberately coarser rather than guessing. */
+  function localSplit(raw) {
+    var rest = raw, scheme = "";
+    var i = rest.indexOf("://");
+    if (i > -1) { scheme = rest.slice(0, i); rest = rest.slice(i + 3); }
+    var cut = rest.search(/[/?#]/);
+    var host = cut > -1 ? rest.slice(0, cut) : rest;
+    var tail = cut > -1 ? rest.slice(cut) : "";
+    var at = host.lastIndexOf("@");
+    var userinfo = "";
+    if (at > -1) { userinfo = host.slice(0, at); host = host.slice(at + 1); }
+    if (!host || host.indexOf(".") === -1) return null;
+    return { scheme: scheme, userinfo: userinfo, subdomain: "",
+             hostname: host, registrable: host, rest: tail };
+  }
+
+  /* The address the form would check: `readPaste` (static/site.js) drops a
+     sentence around it, as the server does. */
+  function address() {
+    if (!window.readPaste) return input.value.replace(/\s+/g, "");
+    var reading = window.readPaste(input.value);
+    return reading.several ? "" : reading.address;
+  }
+
+  function draw() {
+    var raw = address();
+    if (inflight) inflight.abort();
+    if (raw.length < 4 || raw.indexOf(".") === -1) { reset(); return; }
+    inflight = new AbortController();
+    fetch("/api/parts?url=" + encodeURIComponent(raw), { signal: inflight.signal })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+      .then(function (p) {
+        if (address() !== raw) return;
+        if (!p.registrable && !p.hostname) { reset(); return; }
+        paint(p);
+      })
+      .catch(function (err) {
+        if (err && err.name === "AbortError") return;
+        var p = localSplit(raw);
+        if (p) { paint(p); } else { reset(); }
+      });
+  }
+
+  var tries = document.querySelectorAll(".try");
+  function unpressAll() {
+    tries.forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+  }
+
+  input.addEventListener("input", function () {
+    clearTimeout(timer);
+    if (inflight) inflight.abort();
+    if (panel) delete panel.dataset.kind;
+    unpressAll();
+    timer = setTimeout(draw, 140);
+  });
+
+  tries.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wasPressed = btn.getAttribute("aria-pressed") === "true";
+      unpressAll();
+      if (wasPressed) {
+        input.value = "";
+        if (panel) delete panel.dataset.kind;
+      } else {
+        btn.setAttribute("aria-pressed", "true");
+        input.value = btn.dataset.url;
+        if (panel) panel.dataset.kind = btn.dataset.kind;
+      }
+      draw();
+    });
+  });
+
+  /* A breakdown still in flight when the form submits is cut off by the
+     navigation, and WebKit reports that as a failed load ("due to access
+     control checks"). Nothing will read the answer, so stop asking. */
+  function quiet() {
+    clearTimeout(timer);
+    if (inflight) inflight.abort();
+  }
+  if (input.form) input.form.addEventListener("submit", quiet);
+  window.addEventListener("pagehide", quiet);
+
+  /* After the deferred site.js, which brings `readPaste`. */
+  if (input.value.trim()) document.addEventListener("DOMContentLoaded", draw);
+})();
+
+/* One question open at a time. Two long answers open at once turns the list
+   into a wall and loses the shape a person was scanning.
+
+   The answer is uncovered rather than played in: it holds still at full
+   opacity while the clip box around it is opened, and the questions below
+   slide down off the top of it, as though they had been lying over the answer
+   the whole time. details cannot do this alone. It has no height to move
+   between, and it drops its contents the moment `open` clears, which would
+   make every close a jump cut. So both directions are run here, and the row is
+   not marked shut until the slide has finished. */
+(function () {
+  var all = Array.prototype.slice.call(document.querySelectorAll(".faq .qa"));
+  if (!all.length) return;
+
+  var still = matchMedia("(prefers-reduced-motion: reduce)");
+  var span = parseFloat(getComputedStyle(all[0]).getPropertyValue("--qa-open")) || 200;
+  var ease = getComputedStyle(document.documentElement)
+    .getPropertyValue("--ease").trim() || "ease-out";
+
+  /* Shutting rows keep `open` set until their slide ends, so the attribute on
+     its own cannot say what a click should do next. */
+  function isOpen(qa) { return qa.open && !qa.classList.contains("qa--shutting"); }
+
+  function slide(qa, open) {
+    var box = qa.querySelector(".qa__reveal");
+
+    /* Where the row is right now: mid-slide, fully out, or nothing at all.
+       Read before the running slide is dropped, so a row caught in flight
+       carries on from where it stands. A shut row is measured as zero rather
+       than asked: a closed details still reports the box it would have, and
+       believing that starts every slide already finished. */
+    var from = qa.open ? box.getBoundingClientRect().height : 0;
+    if (qa._slide) { qa._slide.cancel(); qa._slide = null; }
+
+    if (still.matches) {
+      qa.classList.remove("qa--shutting");
+      qa.open = open;
+      return;
+    }
+
+    qa.open = true;                        /* a shut row has nothing to measure */
+    qa.classList.toggle("qa--shutting", !open);
+
+    var full = box.scrollHeight;
+    var to = open ? full : 0;
+    /* Part of the way there should take part of the time, or an interrupted
+       row crawls the short distance left to it. */
+    var ms = full ? span * Math.abs(to - from) / full : 0;
+
+    var anim = box.animate(
+      [{ height: from + "px" }, { height: to + "px" }],
+      { duration: ms, easing: ease, fill: "forwards" }
+    );
+    qa._slide = anim;
+    anim.onfinish = function () {
+      qa.classList.remove("qa--shutting");
+      qa.open = open;
+      anim.cancel();                       /* hand the height back to the layout */
+      qa._slide = null;
+    };
+  }
+
+  all.forEach(function (qa) {
+    qa.querySelector("summary").addEventListener("click", function (e) {
+      e.preventDefault();                  /* the slide sets `open`, not the browser */
+      if (isOpen(qa)) { slide(qa, false); return; }
+      all.forEach(function (other) {
+        if (other !== qa && isOpen(other)) slide(other, false);
+      });
+      slide(qa, true);
+    });
+  });
+})();
+</script>
+{% endblock %}

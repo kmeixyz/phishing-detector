@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Phishing Detector | {% if entry_id %}Saved result{% else %}History{% endif %}{% endblock %}
+
+{#  A frame for a result the browser kept.
+
+    The server has nothing to put here. The report's markup was saved into
+    the visitor's own localStorage with its history entry, and the tray script
+    in base.html puts it back into this page, replacing the placeholder below.
+    A note above it says when the check ran and offers a fresh one. If the
+    entry is gone from the list, so is the page, and that is said instead. #}
+
+{% block content %}
+<div class="wrap">
+  <p class="history-note glass-panel" id="history-note" hidden>
+    <span><strong>Saved result.</strong> This is what the check found on
+    <time data-local-time=""></time>. The site may have changed since.</span>
+    <a class="btn btn--plain" href="/">Check it again now</a>
+  </p>
+</div>
+{% if entry_id %}
+<div class="result-page wrap" id="history-restore" data-id="{{ entry_id }}">
+  <div class="page-heading"><span>Saved result</span></div>
+  <p class="row-detail">Opening the saved result&hellip;</p>
+</div>
+{% else %}
+{#  `/history` on its own: typed, bookmarked, or shared. There is no one
+    result to restore, so the list is opened instead of saying one was lost. #}
+<div class="result-page wrap" id="history-index">
+  <div class="page-heading"><span>History</span></div>
+  <section class="glass-panel result-summary">
+    <h1>Your earlier checks</h1>
+    <p class="summary-reason">They are kept in this browser only, and listed under History at the
+      top of every page. Choose one there to see its result again.</p>
+    <div class="action-row">
+      <button class="btn btn--primary" type="button" id="history-index-open">Show my history</button>
+      <a class="btn btn--plain" href="/">Check a link</a>
+    </div>
+  </section>
+</div>
+{% endif %}
+<div class="result-page wrap" id="history-missing" hidden>
+  <div class="page-heading"><span>Saved result</span></div>
+  <section class="glass-panel result-summary is-unsure">
+    <h1 id="history-missing-title">This check is no longer in your history</h1>
+    <p class="summary-reason">Saved results live in this browser only. Once one is removed from the
+      list, nothing keeps a copy &mdash; not this browser, and not the server. Paste the address on the
+      home page to run a fresh check.</p>
+    <div class="action-row"><a class="btn btn--primary" href="/">Check a link</a></div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="/static/result.js?v={{ asset_version }}" defer></script>{% endblock %}

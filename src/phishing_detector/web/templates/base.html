@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script nonce="{{ csp_nonce }}">if ('IntersectionObserver' in window) document.documentElement.classList.add('js-reveal');</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Phishing Detector{% endblock %}</title>
+<meta name="description" content="Paste a web address and get a plain-English answer about whether it is trying to steal from you, with the evidence behind it.">
+<meta name="color-scheme" content="light">
+{# What a chat app or social site shows when the link is shared. Every page
+   previews as the site itself: a result page's address names the URL that was
+   checked, and the preview should not repeat it to whoever the link is sent to. #}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Phishing Detector">
+<meta property="og:title" content="Phishing Detector">
+<meta property="og:description" content="Is that link safe or a scam?">
+<meta property="og:url" content="{{ site_origin }}/">
+<meta property="og:image" content="{{ site_origin }}/static/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1260">
+<meta property="og:image:alt" content="Phishing Detector: Is that link safe or a scam? A lookalike web address with its real domain underlined, marked 'This looks like a scam'.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Phishing Detector">
+<meta name="twitter:description" content="Is that link safe or a scam?">
+<meta name="twitter:image" content="{{ site_origin }}/static/og-image.png">
+<link rel="stylesheet" href="/static/tokens.css?v={{ asset_version }}">
+<link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+{#- Safari draws a grey letter tile in place of an SVG-only icon, so the
+    shield also ships as rasters rendered from icon.svg. -#}
+<link rel="icon" href="/static/favicon.ico?v={{ asset_version }}" sizes="32x32">
+<link rel="icon" href="/static/icon.svg?v={{ asset_version }}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v={{ asset_version }}">
+{#- Without scripts the record's tabs cannot switch, so every panel is shown in
+    turn, and controls that only scripts can work are left out rather than
+    drawn as buttons that do nothing. With scripts this never applies. -#}
+<noscript><style>
+  .record-tab-panel[hidden] { display: block !important; }
+  .record-nav, #tray-open, #corrections-open, #download-report, [data-copy],
+  .source-controls, #feedback-cancel { display: none !important; }
+</style></noscript>
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar" id="topbar">
+  <div class="topbar__in">
+    <a class="brand" href="/">
+      <span class="brand__name">Phishing Detector</span>
+    </a>
+
+    <span class="topbar__spacer"></span>
+
+    <nav class="topnav" aria-label="Sections">
+      <button type="button" id="tray-open" aria-controls="tray" aria-expanded="false">
+        <span class="topnav__label">History</span>
+      </button>
+
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  {% block content %}{% endblock %}
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<div class="tray" id="tray" aria-label="Links you have checked" aria-hidden="true" role="dialog" aria-modal="true" inert>
+  <div class="tray__head">
+    <h2>History</h2>
+    <span style="flex:1"></span>
+    <button class="iconbtn" id="tray-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor"
+              stroke-width="1.9" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="tray__body">
+    {#  Empty on the server, filled by the browser.
+
+        This list lives in localStorage, not in the database. The server used to
+        keep it, in one table with no notion of who scanned what -- which on a
+        single-user instance is the same thing as "yours" and on a shared one
+        means every visitor reads everyone else's checked links, paths and
+        query strings included. Keeping it here means the server never learns
+        it: not in a table, not in a backup, not in a disk image.
+
+        The row markup is built in `renderHistory` below rather than here, so
+        there is one shape to maintain instead of a Jinja copy and a JS copy
+        that drift. #}
+    <ul id="history-list" hidden></ul>
+    <p class="tray__empty" id="history-empty">Nothing checked yet. Paste a web address on the
+      home page and it will appear here. This list is kept by your browser on this
+      device, and never sent to the server.</p>
+    <div class="history-secondary">
+      <p>History lives only in this browser. Removing an entry deletes it and its saved result; nothing else keeps a copy.</p>
+      {% if corrections %}
+      <button class="text-action" type="button" id="corrections-open" aria-controls="corrections-tray" aria-expanded="false">Review corrections</button>
+      {% endif %}
+      <button class="text-action" type="button" id="history-clear">Clear this list</button>
+    </div>
+    <p id="history-status" role="status" class="action-status"></p>
+  </div>
+</div>
+
+{#  The scan just completed, for the script below to store. Absent on every
+    other page, which is why the script treats it as optional.
+
+    `tojson`, never a pre-serialised string with `|safe`. The URL in here is
+    attacker-chosen and `json.dumps` does not escape `<`, so a scanned address
+    containing `</script>` would close this element and everything after it
+    would be markup. Jinja's filter escapes it to `<`. #}
+{% if history_entry %}
+<script type="application/json" id="history-entry">{{ history_entry|tojson }}</script>
+{% endif %}
+
+{#  Absent entirely on a shared instance: this queue holds the notes and URLs
+    everyone has submitted, so showing it to each visitor repeats exactly the
+    mistake the history list used to make. `feedback_cli.py` reviews it there. #}
+{% if corrections %}
+<div class="tray" id="corrections-tray" aria-label="Reports of wrong verdicts" aria-hidden="true" role="dialog" aria-modal="true" inert>
+  <div class="tray__head">
+    <h2>Corrections</h2>
+    <span style="flex:1"></span>
+    <button class="iconbtn" id="corrections-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor"
+              stroke-width="1.9" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="tray__body">
+    <p class="tray__lede">
+      {%- if corrections.rows -%}
+      {{ corrections.rows|length }} time{{ '' if corrections.rows|length == 1 else 's' }} someone said a
+      result looked wrong. Each report keeps the evidence from that check, so the case can be
+      re-examined even after the site itself goes down.
+      {%- else -%}
+      Nobody has reported a wrong result yet. When someone does, it appears here with the
+      evidence from that check attached.
+      {%- endif -%}
+    </p>
+
+    {% if not corrections.rows %}
+    <div class="empty">
+      <h2>Reporting a wrong result</h2>
+      <p>Open any result and choose <strong>This verdict looks wrong</strong>. Reports of a wrong
+        verdict become training examples and outrank the automated feeds. A report of bad
+        evidence does not: that means a source returned something incorrect, and training on it
+        would teach the model to repeat the source's mistake.</p>
+    </div>
+    {% else %}
+
+    <details class="fold">
+      <summary>What happens to these reports</summary>
+      <div class="fold__body">
+        <p>Reports of a wrong verdict become training examples, and they outrank the automated
+          feeds. A report of <strong>bad evidence</strong> does not: that means a source returned
+          something incorrect, and training on it would teach the model to repeat the source's
+          mistake.</p>
+        {% if corrections.summary.from_abstentions %}
+        <p>{{ corrections.summary.from_abstentions }} of these came from checks that gave no
+          answer, which are the most useful examples available. They are exactly the cases the
+          system could not decide on its own.</p>
+        {% endif %}
+      </div>
+    </details>
+
+    <div class="tray-reports">
+      {% for r in corrections.rows %}
+      {% set kind = "over" if r.kind == "false_positive" else ("data" if r.kind == "bad_evidence" else "miss") %}
+      <div class="report">
+        <span class="report__mark {{ kind }}">
+          {% if kind == "miss" %}{% include "_cross.html" %}
+          {% else %}{% include "_dot.html" %}{% endif %}
+        </span>
+        <div>
+          <div class="report__title">
+            {% if r.kind == "false_positive" %}A safe site was flagged
+            {% elif r.kind == "false_negative" %}A scam site was missed
+            {% else %}The evidence itself looked wrong{% endif %}
+            {% if r.abstained %}<span style="color:var(--ink-3);font-weight:400;">(the check gave no answer)</span>{% endif %}
+          </div>
+          <div class="report__url">{{ r.url }}</div>
+          {% if r.note %}<p class="report__note">{{ r.note }}</p>{% endif %}
+          <details class="fold" style="margin-top:var(--s-2);border-top:0;">
+            <summary style="min-height:0;padding:6px 0;">What the check said at the time</summary>
+            <div class="fold__body">
+              <div class="kv"><span class="kv__k">Verdict then</span>
+                <span class="kv__v">{{ r.verdict_label }}</span></div>
+              <div class="kv"><span class="kv__k">Risk score</span>
+                <span class="kv__v num">{{ (r.probability * 100)|round|int ~ " / 100" if r.probability is not none else "not scored" }}</span></div>
+              <div class="kv"><span class="kv__k">Report type</span>
+                <span class="kv__v">{{ r.kind.replace('_',' ') }}</span></div>
+              <div class="kv"><span class="kv__k">This check</span>
+                <span class="kv__v"><a href="/result?url={{ r.url|urlencode }}">Open the result</a></span></div>
+            </div>
+          </details>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<script nonce="{{ csp_nonce }}">
+/* --------------------------------------------------------------------------
+   The trays: History and Corrections. Neither is the job this app does, so
+   each slides over the page on request rather than taking a permanent column
+   away from the one thing that is. Only one is open at a time, sharing a
+   single scrim, so opening one puts the other away first.
+-------------------------------------------------------------------------- */
+(function () {
+  var scrim = document.getElementById("scrim");
+  var trays = [
+    { tray: document.getElementById("tray"),
+      open: document.getElementById("tray-open"),
+      close: document.getElementById("tray-close") },
+    { tray: document.getElementById("corrections-tray"),
+      open: document.getElementById("corrections-open"),
+      close: document.getElementById("corrections-close") }
+  ].filter(function (t) { return t.tray && t.open && t.close; });
+  if (!trays.length) return;
+
+  var current = null;
+  var lastFocus = null;
+
+  function show(entry, on) {
+    entry.tray.classList.toggle("is-open", on);
+    entry.open.setAttribute("aria-expanded", String(on));
+    entry.tray.setAttribute("aria-hidden", String(!on));
+    entry.tray.inert = !on;
+  }
+
+  function closeCurrent() {
+    if (!current) return;
+    show(current, false);
+    current = null;
+    document.body.classList.remove("tray-open");
+    document.getElementById("main").inert = false;
+    document.getElementById("topbar").inert = false;
+    if (scrim) scrim.hidden = true;
+    if (lastFocus) lastFocus.focus();
+  }
+
+  function openTray(entry) {
+    if (current === entry) return;
+    if (current) show(current, false);
+    /* Safari does not focus a button when it is clicked, so the element to
+       return to was <body> and closing the tray left keyboard focus nowhere.
+       The button that opened it is where focus belongs. */
+    else lastFocus = (document.activeElement && document.activeElement !== document.body)
+      ? document.activeElement : entry.open;
+    current = entry;
+    document.body.classList.add("tray-open");
+    document.getElementById("main").inert = true;
+    document.getElementById("topbar").inert = true;
+    if (scrim) scrim.hidden = false;
+    show(entry, true);
+    entry.close.focus();
+  }
+
+  trays.forEach(function (entry) {
+    entry.open.addEventListener("click", function () { openTray(entry); });
+    entry.close.addEventListener("click", closeCurrent);
+  });
+  if (scrim) scrim.addEventListener("click", closeCurrent);
+
+  /* A scrim over the page means this behaves as a modal, so Tab has to stay
+     inside whichever tray is open. Without the trap, tabbing past the last
+     row lands on links behind the scrim that cannot be clicked. */
+  document.addEventListener("keydown", function (e) {
+    if (!current) return;
+    if (e.key === "Escape") { closeCurrent(); return; }
+    if (e.key !== "Tab") return;
+    var stops = Array.from(current.tray.querySelectorAll(
+      'a[href], button, input, textarea, select, [tabindex]:not([tabindex="-1"])')).filter(el => !el.disabled && el.getClientRects().length);
+    if (!stops.length) return;
+    var first = stops[0], last = stops[stops.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+})();
+
+/* --------------------------------------------------------------------------
+   History, kept by this browser.
+
+   The list is localStorage, not a server table. Renaming and removing an entry
+   are local edits: there is no request, so there is nothing to authorise, and
+   nothing about which links a person checked ever leaves the device.
+
+   Storage can throw rather than merely being empty -- Safari in private mode,
+   a browser set to block site data, an origin whose quota is full -- so every
+   read and write is wrapped and the tray degrades to "nothing checked yet"
+   rather than to a broken page.
+-------------------------------------------------------------------------- */
+(function () {
+  var tray = document.getElementById("tray");
+  var list = document.getElementById("history-list");
+  var empty = document.getElementById("history-empty");
+  if (!tray || !list || !empty) return;
+
+  var KEY = "phishing_detector.history.v1";
+  var LIMIT = 30;
+  var status = document.getElementById("history-status");
+
+  function load() {
+    try {
+      var raw = window.localStorage.getItem(KEY);
+      var parsed = raw ? JSON.parse(raw) : [];
+      /* Only entries this script could have written: anything else in the key
+         -- another version's format, a hand edit, a bug -- is left out rather
+         than drawn as a row with a number for an address. */
+      return Array.isArray(parsed) ? parsed.filter(function (e) {
+        return e && typeof e === "object" && typeof e.url === "string" && e.url &&
+          (e.id === undefined || typeof e.id === "string");
+      }) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /* Each entry carries the result page it came from, so opening it later
+     shows that scan and not a new one. That is most of the entry's weight,
+     and a browser's quota is finite: if a write is refused, the oldest saved
+     pages are dropped first, one at a time -- the rows stay, and open as a
+     fresh check -- before giving up on the list itself. Dropping a fixed
+     number at once could still leave too much, and then the scan just
+     finished was the one not saved. */
+  function save(entries) {
+    entries = entries.slice(0, LIMIT);
+    for (;;) {
+      try {
+        window.localStorage.setItem(KEY, JSON.stringify(entries));
+        return true;
+      } catch (e) {
+        var oldest = -1;
+        for (var i = entries.length - 1; i >= 0; i--) {
+          if (entries[i].html) { oldest = i; break; }
+        }
+        if (oldest < 0) break;
+        var copy = {}; for (var k in entries[oldest]) if (k !== "html") copy[k] = entries[oldest][k];
+        entries[oldest] = copy;
+      }
+    }
+    if (status) {
+      status.textContent = "This browser will not let the page save its history.";
+    }
+    return false;
+  }
+
+  /* Newest first, one entry per URL: re-checking a link moves it up rather
+     than leaving two rows that disagree about the verdict. A name the person
+     typed survives the rescan, because it is theirs and the score is not. */
+  function remember(entry) {
+    if (!entry || !entry.url) return;
+    var entries = load();
+    var previous = null;
+    entries = entries.filter(function (e) {
+      if (e.url === entry.url) { previous = e; return false; }
+      return true;
+    });
+    if (previous && previous.name) entry.name = previous.name;
+    entries.unshift(entry);
+    save(entries);
+  }
+
+  function scoreText(entry) {
+    return (entry.score === null || entry.score === undefined) ? "--" : String(entry.score);
+  }
+
+  /* Built with createElement and textContent throughout. Every field here is
+     attacker-influenced -- the URL and the hostname come from whatever was
+     scanned -- and this is the one place in the app that builds markup in the
+     browser, where Jinja's autoescaping is not there to catch it. No innerHTML,
+     no string concatenation into HTML. */
+  function row(entry) {
+    var li = document.createElement("li");
+    li.className = "run";
+    li.dataset.url = entry.url;
+    li.dataset.host = entry.host || entry.url;
+
+    var link = document.createElement("a");
+    link.className = "run__open";
+    /* A saved page opens as it was. An entry without one -- saved before
+       pages were kept, or dropped to make room -- can only be checked afresh,
+       and the link says so by going through the progress page. */
+    link.href = (entry.id && entry.html)
+      ? "/history?id=" + encodeURIComponent(entry.id)
+      : "/scan?url=" + encodeURIComponent(entry.url);
+    link.title = entry.url;
+
+    var main = document.createElement("span");
+    main.className = "run__main";
+    var name = document.createElement("span");
+    name.className = "run__name";
+    name.textContent = entry.name || entry.host || entry.url;
+    var when = document.createElement("span");
+    when.className = "run__when";
+    var state = document.createElement("span");
+    state.className = "run__state is-" + (entry.tone || "unsure");
+    state.textContent = entry.state || "";
+    var time = document.createElement("time");
+    time.setAttribute("data-local-time", "");
+    if (entry.when) { time.setAttribute("datetime", entry.when); time.textContent = entry.when; }
+    when.appendChild(state);
+    when.appendChild(time);
+    main.appendChild(name);
+    main.appendChild(when);
+
+    var score = document.createElement("span");
+    score.className = "run__score is-" + (entry.tone || "unsure");
+    score.title = "Score out of 100";
+    score.textContent = scoreText(entry);
+
+    link.appendChild(main);
+    link.appendChild(score);
+
+    var tools = document.createElement("span");
+    tools.className = "run__tools";
+    tools.appendChild(iconButton("run-rename", "Rename this check",
+      "M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"));
+    tools.appendChild(iconButton("run-del iconbtn--danger", "Remove this check",
+      "M4.5 7h15M10 4h4M9.5 10.5v7M14.5 10.5v7M6.5 7l.8 12.2a1.6 1.6 0 0 0 1.6 1.5h6.2a1.6 1.6 0 0 0 1.6-1.5L17.5 7"));
+
+    var undo = document.createElement("span");
+    undo.className = "run__undo";
+    undo.appendChild(document.createTextNode("Removed"));
+    var undoBtn = document.createElement("button");
+    undoBtn.className = "linkbtn run-undo";
+    undoBtn.type = "button";
+    undoBtn.textContent = "Undo";
+    undo.appendChild(undoBtn);
+    var timer = document.createElement("span");
+    timer.className = "run__timer";
+    timer.setAttribute("aria-hidden", "true");
+    undo.appendChild(timer);
+
+    li.appendChild(link);
+    li.appendChild(tools);
+    li.appendChild(undo);
+    return li;
+  }
+
+  function iconButton(cls, label, path) {
+    var b = document.createElement("button");
+    b.className = "iconbtn " + cls;
+    b.type = "button";
+    b.setAttribute("aria-label", label);
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    var d = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    d.setAttribute("d", path);
+    d.setAttribute("stroke", "currentColor");
+    d.setAttribute("stroke-width", "1.8");
+    d.setAttribute("stroke-linejoin", "round");
+    d.setAttribute("stroke-linecap", "round");
+    svg.appendChild(d);
+    b.appendChild(svg);
+    return b;
+  }
+
+  function showListOrEmpty() {
+    var any = list.childNodes.length > 0;
+    list.hidden = !any;
+    empty.hidden = any;
+  }
+
+  function renderHistory() {
+    var entries = load();
+    list.textContent = "";
+    entries.forEach(function (entry) {
+      if (entry && entry.url) list.appendChild(row(entry));
+    });
+    showListOrEmpty();
+    /* The shared helper that turns UTC stamps into local ones runs on load and
+       has already been past; these rows arrived afterwards. */
+    if (window.localiseTimes) window.localiseTimes(list);
+  }
+
+  function update(url, change) {
+    var entries = load();
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].url === url) { change(entries[i]); break; }
+    }
+    save(entries);
+  }
+
+  function forget(url) {
+    save(load().filter(function (e) { return e.url !== url; }));
+  }
+
+  /* --- rename in place ------------------------------------------------- */
+  tray.addEventListener("click", function (e) {
+    var rename = e.target.closest(".run-rename");
+    if (!rename) return;
+    var li = rename.closest(".run");
+    var link = li.querySelector(".run__open");
+    var name = li.querySelector(".run__name");
+    var before = name.textContent.trim();
+
+    var input = document.createElement("input");
+    input.type = "text";
+    input.className = "run__rename";
+    input.value = before;
+    input.maxLength = 80;
+    // Same AutoFill guard as the check field: "Name" in the label invites
+    // Safari to offer the person's own name.
+    input.id = "search-run-title";
+    input.autocomplete = "off";
+    input.setAttribute("aria-label", "Title for this check");
+    link.hidden = true;
+    li.insertBefore(input, link);
+    input.focus();
+    input.select();
+
+    var done = false;
+    function finish(commitEdit) {
+      if (done) return;
+      done = true;
+      var value = commitEdit ? input.value.trim().slice(0, 80) : before;
+      input.remove();
+      link.hidden = false;
+      name.textContent = value || li.dataset.host;
+      if (commitEdit && value !== before) {
+        update(li.dataset.url, function (entry) { entry.name = value; });
+      }
+    }
+    input.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") { ev.preventDefault(); finish(true); }
+      else if (ev.key === "Escape") { ev.preventDefault(); finish(false); }
+    });
+    input.addEventListener("blur", function () { finish(true); });
+  });
+
+  /* --- delete, with a window to take it back --------------------------- */
+  /* The entry is not dropped on click. The row becomes a "Removed / Undo"
+     strip and the write happens a few seconds later, so a misclick costs
+     nothing and a deliberate one meets no confirmation dialog. */
+  var UNDO_MS = 6000;
+  var pending = new Map();
+
+  function restore(li) {
+    var entry = pending.get(li);
+    if (entry) { clearTimeout(entry.timeout); clearInterval(entry.tick); }
+    pending.delete(li);
+    li.classList.remove("is-pending", "is-going");
+  }
+
+  function commit(li) {
+    var entry = pending.get(li);
+    if (entry) clearInterval(entry.tick);
+    pending.delete(li);
+    forget(li.dataset.url);
+    li.remove();
+    showListOrEmpty();
+  }
+
+  tray.addEventListener("click", function (e) {
+    if (e.target.closest(".run-undo")) { restore(e.target.closest(".run")); return; }
+    var del = e.target.closest(".run-del");
+    if (!del) return;
+    var li = del.closest(".run");
+    if (pending.has(li)) return;
+    li.classList.add("is-pending");
+    var timerEl = li.querySelector(".run__timer");
+    var deadline = Date.now() + UNDO_MS;
+    function tick() {
+      if (timerEl) {
+        timerEl.textContent = Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) + "s";
+      }
+    }
+    tick();
+    pending.set(li, {
+      timeout: setTimeout(function () { commit(li); }, UNDO_MS),
+      tick: setInterval(tick, 250)
+    });
+  });
+
+  /* Leaving with a delete still pending used to need a beacon to survive the
+     navigation. A localStorage write is synchronous, so it just happens. */
+  window.addEventListener("pagehide", function () {
+    pending.forEach(function (entry, li) {
+      clearTimeout(entry.timeout);
+      clearInterval(entry.tick);
+      forget(li.dataset.url);
+    });
+    pending.clear();
+  });
+
+  var clear = document.getElementById("history-clear");
+  if (clear) {
+    clear.addEventListener("click", function () {
+      if (!window.confirm("Remove every entry from this browser's list?")) return;
+      save([]);
+      renderHistory();
+      if (status) status.textContent = "History cleared.";
+    });
+  }
+
+  /* Store the scan this page is reporting, then draw the tray. The page's
+     own markup goes with it: this script runs after the report has been
+     parsed and before the deferred result script has touched it, so what is
+     saved is the report exactly as the server sent it. */
+  var blob = document.getElementById("history-entry");
+  if (blob) {
+    try {
+      var entry = JSON.parse(blob.textContent);
+      var report = document.getElementById("report");
+      if (report) entry.html = report.outerHTML;
+      remember(entry);
+    } catch (e) { /* a malformed blob must not cost the page its tray */ }
+  }
+  renderHistory();
+
+  /* Another tab checked, renamed or removed something. Writes here always
+     reread the list first, so nothing is lost either way; this keeps what
+     this tab shows from going stale. Not mid-rename or mid-undo, which would
+     yank the row out from under the person using it. */
+  window.addEventListener("storage", function (e) {
+    if (e.key !== KEY && e.key !== null) return;
+    if (pending.size || tray.querySelector(".run__rename")) return;
+    renderHistory();
+  });
+
+  /* `/history` with no entry named: open the list itself. */
+  var index = document.getElementById("history-index-open");
+  var trayButton = document.getElementById("tray-open");
+  if (index && trayButton) {
+    index.addEventListener("click", function () { trayButton.click(); });
+    trayButton.click();
+  }
+
+  /* Put a saved result back on the page, when this is the page for one. */
+  var frame = document.getElementById("history-restore");
+  if (frame) {
+    var wanted = frame.dataset.id;
+    var saved = null;
+    load().forEach(function (e) { if (e.id === wanted && typeof e.html === "string") saved = e; });
+    var missing = document.getElementById("history-missing");
+    /* The markup is this origin's own rendering of a result, autoescaped by
+       the server and filed by this script; it never held a script and the
+       policy would not run one anyway. It is put back as a document fragment
+       rather than executed.
+
+       Only a report this script filed: the saved markup is `#report`'s own
+       outerHTML. Anything else under the key is shown as missing, rather than
+       whatever element happened to come first, or a page left saying
+       "Opening..." for ever. */
+    var page = null;
+    if (saved) {
+      var holder = document.createElement("template");
+      holder.innerHTML = saved.html;
+      var first = holder.content.firstElementChild;
+      if (first && first.id === "report" && !first.querySelector("script")) page = first;
+    }
+    if (page) {
+      /* It was new when it was checked; reopened from the list, it is saved. */
+      var provenance = page.querySelector("[data-provenance]");
+      if (provenance && provenance.textContent.trim() === "New evidence") provenance.textContent = "Saved evidence";
+      frame.replaceWith(page);
+      var note = document.getElementById("history-note");
+      if (note) {
+        note.hidden = false;
+        var when = note.querySelector("time");
+        if (when && saved.when) { when.setAttribute("datetime", saved.when); when.textContent = saved.when; }
+        var again = note.querySelector("a");
+        if (again) again.href = "/scan?url=" + encodeURIComponent(saved.url);
+        if (window.localiseTimes) window.localiseTimes(note);
+      }
+    } else if (missing) {
+      frame.hidden = true;
+      missing.hidden = false;
+    }
+  }
+})();
+
+/* --------------------------------------------------------------------------
+   The address field: Enter sends, Shift+Enter makes a new line.
+-------------------------------------------------------------------------- */
+(function () {
+  document.querySelectorAll(".check__input").forEach(function (input) {
+    input.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" || e.shiftKey) return;
+      e.preventDefault();
+      if (input.form) input.form.requestSubmit();
+    });
+  });
+})();
+
+/* --------------------------------------------------------------------------
+   Sections arrive as they are scrolled to, once each.
+
+   The rise is small and the fade is most of the effect. A page where every
+   block slides a long way in is a page that cannot be skimmed, and skimming
+   is what people do here on the way to the one field that matters.
+-------------------------------------------------------------------------- */
+(function () {
+  var root = document.documentElement;
+  if (!root.classList.contains("js-reveal")) return;
+
+  var marked = document.querySelectorAll(".reveal");
+  if (!marked.length) { root.classList.remove("js-reveal"); return; }
+
+  try {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-in");
+        io.unobserve(entry.target);
+      });
+    /* threshold 0, not a fraction: the ratio is of the element's own area, so
+       a section taller than viewport/fraction could never reach it and would
+       stay at opacity 0 for good. The bottom margin alone sets the moment. */
+    }, { rootMargin: "0px 0px -12% 0px", threshold: 0 });
+
+    /* Anything already on screen at load is revealed on the next frame rather
+       than immediately, so the first view animates in too instead of being
+       the only part of the page that snaps. */
+    marked.forEach(function (el) { io.observe(el); });
+  } catch (e) {
+    root.classList.remove("js-reveal");
+  }
+})();
+
+/* Every timestamp is stamped in UTC by the server and rewritten here into
+   whatever the reader's own clock says, because "2026-09-05T04:55:51+00:00" is
+   not a time anybody reads. The machine-readable value stays in the datetime
+   attribute, and a browser that cannot format it simply keeps showing the
+   stamp it was given. */
+/* Exposed on `window` rather than kept private, because the history tray builds
+   its rows in JavaScript and has to localise the ones it adds after this pass
+   has already run. The initial pass below still catches the first render, since
+   that happens earlier in document order. */
+(function () {
+  var full = null, short = null;
+  try {
+    /* The visitor's own order and time zone, but the page's calendar and
+       digits: under ar-SA a Hijri date in Arabic-Indic numerals sat inside an
+       English sentence about when the check ran. */
+    var keep = { calendar: "gregory", numberingSystem: "latn" };
+    full = new Intl.DateTimeFormat(undefined, Object.assign({ dateStyle: "long", timeStyle: "short" }, keep));
+    short = new Intl.DateTimeFormat(undefined, Object.assign({ dateStyle: "medium", timeStyle: "short" }, keep));
+  } catch (e) { return; }
+
+  window.localiseTimes = function (root) {
+    (root || document).querySelectorAll("[data-local-time]").forEach(function (el) {
+      var stamp = el.getAttribute("datetime") || el.textContent.trim();
+      var when = new Date(stamp);
+      if (isNaN(when.getTime())) return;
+      el.textContent = (el.closest(".run") ? short : full).format(when);
+      el.title = stamp;
+    });
+  };
+
+  window.localiseTimes(document);
+})();
+
+/* The header action points at the field rather than at another page. Anchors
+   move the viewport but leave the caret behind, so the focus is placed by
+   hand and the browser is told not to scroll a second time. */
+(function () {
+  document.querySelectorAll('a[href="#check"]').forEach(function (link) {
+    link.addEventListener("click", function (e) {
+      var field = document.querySelector(".check__input");
+      if (!field) return;
+      e.preventDefault();
+      field.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      field.focus({ preventScroll: true });
+    });
+  });
+})();
+</script>
+<script src="/static/site.js?v={{ asset_version }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

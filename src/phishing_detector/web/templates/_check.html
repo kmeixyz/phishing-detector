@@ -1,0 +1,28 @@
+{% set variant = check_variant|default('hero') %}
+{#- "search" in the id is what keeps Safari from offering Contact AutoFill
+    (a street address, a name) here; it skips fields it reads as a search box
+    and ignores autocomplete="off". -#}
+{% set field_id = 'search-link-' ~ variant %}
+<form class="check check--{{ variant }}" method="post" action="/submit" novalidate autocomplete="off">
+  {% if check_variant == 'bar' %}<label class="check__label" for="{{ field_id }}">Check another link</label>{% endif %}
+  <div class="check__row">
+    <textarea class="check__input" id="{{ field_id }}" name="message" rows="1" wrap="soft"
+              enterkeyhint="go" spellcheck="false" autocomplete="off"
+              autocorrect="off" autocapitalize="off" data-1p-ignore="true" data-lpignore="true"
+              data-bwignore="true" data-form-type="other" data-op-ignore="true"
+              aria-describedby="{{ field_id }}-error" {% if input_error %}aria-invalid="true"{% endif %}
+              {#- The bar variant has a visible <label>. The hero had none, so the
+                  field's accessible name was its placeholder -- a screen reader
+                  announced an example URL instead of what the box is for. #}
+              {% if check_variant != 'bar' %}aria-label="Link to check"{% endif %}
+              placeholder="https://example.com/login">{{ '' if check_variant == 'bar' else (url or '') }}</textarea>
+    <button class="check__go" type="submit">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <circle cx="10.8" cy="10.8" r="6.3" stroke="currentColor" stroke-width="2.2"/>
+        <path d="m15.5 15.5 4.2 4.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+      <span>Check</span>
+    </button>
+  </div>
+  <p class="field-error" id="{{ field_id }}-error" role="alert" {% if not input_error %}hidden{% endif %}>{{ input_error or '' }}</p>
+</form>

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Phishing Detector | {{ 'Interrupted' if failed else 'Checking...' }}{% endblock %}
+{% block content %}
+<section class="scan-page wrap" data-url="{{ url }}" data-render="{{ 'true' if render else 'false' }}" data-failed="{{ 'true' if failed else 'false' }}">
+  <div class="page-heading"><span>Link assessment</span><a class="text-action" href="/">Check a different link</a></div>
+  <div class="glass-panel scan-panel">
+    <span class="status-label">{{ 'Interrupted' if failed else 'Check in progress' }}</span>
+    <h1 id="scan-title">{{ 'This link could not be checked' if failed else 'Checking your link' }}</h1>
+    <p class="scan-lede" id="scan-lede">{{ 'The check did not finish. Try again or check a different address.' if failed else 'We are gathering the evidence. Your result will open when the check finishes.' }}</p>
+    <noscript><div class="notice"><h2>Your browser is not running scripts</h2><p>This page needs them to show the check as it runs, so the indicators here are not moving. You can still check the link: the result opens when the check finishes, which can take up to a minute.</p><div class="action-row"><a class="btn btn--primary" href="/result?url={{ url|urlencode }}&amp;live=true{{ '&amp;render=true' if render else '' }}">Check without live progress</a></div></div></noscript>
+    {% with hide_legend = true %}{% include "_parts.html" %}{% endwith %}
+    <div id="scan-live" {% if failed %}hidden{% endif %}>
+      <div class="progress" role="progressbar" aria-label="Checks finished" aria-valuemin="0" aria-valuemax="{{ collectors|length }}" aria-valuenow="0"><div class="progress__fill" id="bar"></div></div>
+      <p id="headline" class="progress-label" role="status" aria-live="polite">Starting the check...</p>
+      <p class="scan-current" id="scan-current">Looking up the page and its registration records.</p>
+      <div class="result-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+    </div>
+    <div id="scan-recovery" {% if not failed %}hidden{% endif %}><p id="recovery-message" role="alert">The connection or a required service may be unavailable. No completed result is available from this attempt.</p><pre id="recovery-detail" hidden></pre><div class="action-row"><a class="btn btn--primary" href="/scan?url={{ url|urlencode }}{{ '&render=true' if render else '' }}">Try again</a><a class="btn btn--plain" href="/">Check a different link</a></div></div>
+    <p class="scan-assurance">The checker does not fill in forms or enter passwords. Downloads are blocked.</p>
+  </div>
+  <details class="glass-panel record-fold scan-sources" {% if failed %}open{% endif %}><summary>Source activity <span id="activity-count">{{ collectors|length }} checks</span></summary><div class="fold-content"><div class="scan-steps" id="rows">{% for name in collectors %}<div class="scan-step" data-name="{{ name }}"><span>{{ source_names.get(name, name) }}</span><span class="step-detail">{{ 'Not completed' if failed else 'Waiting' }}</span></div>{% endfor %}</div></div></details>
+  <details class="glass-panel record-fold"><summary>Limits on this check</summary><div class="fold-content"><p>Checks run in a restricted environment. Page scripts may run when enabled and needed to inspect the page.</p><dl class="data-list">{% for k, val in envelope if k != 'Javascript execution' %}<div><dt>{{ k }}</dt><dd>{{ val }}</dd></div>{% endfor %}<div><dt>Page scripts</dt><dd>{{ 'Requested for this deeper check' if render else ('May run if the page needs them' if js_available else 'Unavailable') }}</dd></div></dl></div></details>
+</section>
+{% endblock %}
+{% block scripts %}{% if not failed %}<script src="/static/scanning.js?v={{ asset_version }}" defer></script>{% endif %}{% endblock %}

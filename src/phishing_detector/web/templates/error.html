@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Phishing Detector | {{ heading }}{% endblock %}
+
+{#  Any page that is not there, or a method a page does not take. Before this a
+    mistyped address answered with FastAPI's `{"detail":"Not Found"}`, which
+    reads to a visitor like the site itself has broken. #}
+
+{% block content %}
+<div class="result-page wrap">
+  <div class="page-heading"><span>{{ status_code }}</span></div>
+  <section class="glass-panel result-summary is-unsure">
+    <h1>{{ heading }}</h1>
+    <p class="summary-reason">{{ explanation }}</p>
+    <div class="action-row"><a class="btn btn--primary" href="/">Check a link</a></div>
+  </section>
+</div>
+{% endblock %}

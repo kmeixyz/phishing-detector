@@ -1,0 +1,78 @@
+<section class="band wrap how-section" aria-labelledby="how-title">
+  <div class="section-heading reveal"><h2 id="how-title">How we check suspicious links</h2></div>
+  <div class="feature-grid">
+    <article class="feature-card reveal">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">Address example</span>
+        <div class="drawing drawing-address">
+          <div class="address-fragment">secure.paypal.com.</div>
+          <br>
+          <div class="domain-fragment">account-verify.co</div>
+          <div class="path-fragment">/login</div>
+          <div class="annotation"><span class="annotation-line"></span>Registered domain</div>
+          <p class="drawing-caption">A familiar name can appear<br>before the real domain.</p>
+        </div>
+      </div>
+      <div class="feature-copy"><p><b>We identify the real domain.</b> Familiar brand names elsewhere in the address do not change who owns it.</p></div>
+    </article>
+    <article class="feature-card reveal" style="--in-delay:60ms">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">Redirect example</span>
+        <div class="drawing drawing-route">
+          <div class="route-stop"><span class="route-dot"></span><div><small>Link received</small><b>short.example/link</b></div></div>
+          <div class="route-stop"><span class="route-dot"></span><div><small>Redirect</small><b>redirect.example</b></div></div>
+          <div class="route-stop route-stop--last"><span class="route-dot"></span><div><small>Final destination</small><b>destination.example</b></div></div>
+        </div>
+      </div>
+      <div class="feature-copy"><p><b>We trace every redirect.</b> Each address shows whether the link goes somewhere else before the page loads.</p></div>
+    </article>
+    <article class="feature-card reveal" style="--in-delay:120ms">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">Page example</span>
+        <div class="drawing drawing-page">
+          <div class="page-line"><b>Sign in</b><span class="sample-site-icon">A</span></div>
+          <div class="sample-field"><span>Password field</span><span class="password-dots">••••••••</span></div>
+          <div class="page-destination"><small>Form destination</small><b>another-site.example</b></div>
+          <div class="drawing-caption">Page content and destinations<br>are inspected together.</div>
+        </div>
+      </div>
+      <div class="feature-copy"><p><b>We inspect the page.</b> Password fields, forms, links, and copied branding reveal what it asks for.</p></div>
+    </article>
+    <article class="feature-card reveal">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">Records checked</span>
+        <div class="drawing drawing-history">
+          <div class="history-line"><span></span><span></span><span></span></div>
+          <div class="history-labels"><span>Registered</span><span>Updated</span><span>Checked</span></div>
+          <div class="diagram-row"><span>Registration</span><b>Age and owner</b></div>
+          <div class="diagram-row"><span>Certificate</span><b>Dates and validity</b></div>
+          <div class="diagram-row"><span>Hosting</span><b>Network and location</b></div>
+        </div>
+      </div>
+      <div class="feature-copy"><p><b>We check its history.</b> Registration, certificates, and hosting details add context to the result.</p></div>
+    </article>
+    <article class="feature-card reveal" style="--in-delay:60ms">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">How the decision is made</span>
+        <div class="drawing drawing-decision">
+          <div class="decision-line"><b>Rules</b><span>Checks on the evidence</span></div>
+          <div class="decision-line"><b>Model</b><span>Patterns in the evidence</span></div>
+          <div class="decision-join"></div>
+          <div class="decision-outcome"><b>One explained result</b><span>Disagreements stay visible</span></div>
+        </div>
+      </div>
+      <div class="feature-copy"><p><b>Rules and scoring are compared.</b> Disagreements and rules that change the result stay visible.</p></div>
+    </article>
+    <article class="feature-card reveal" style="--in-delay:120ms">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">Limits on the check</span>
+        <div class="drawing drawing-contained">
+          <div class="container-input">The link you submit</div>
+          <div class="container-connector"></div>
+          <div class="container-boundary"><b>Restricted checker</b><div class="diagram-row"><span>Forms</span><strong>Untouched</strong></div><div class="diagram-row"><span>Downloads</span><strong>Blocked</strong></div><div class="diagram-row"><span>Time and size</span><strong>Limited</strong></div></div>
+        </div>
+      </div>
+      <div class="feature-copy"><p><b>The check stays contained.</b> It never fills forms or accepts downloads, and it has time and size limits.</p></div>
+    </article>
+  </div>
+</section>

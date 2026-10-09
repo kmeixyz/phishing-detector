@@ -1,0 +1,586 @@
+{% extends "base.html" %}
+{% block title %}Phishing Detector | Results{% endblock %}
+
+{#  The result, in three passes.
+
+    A person arriving here has been sent a link and wants to know whether to
+    trust it. So the page answers first: verdict, the one reason behind it,
+    and what to do. Only then does it explain itself. The evidence is never
+    hidden, but it is never the first thing either: it sits under headings a
+    reader chooses to open, in the order the decision was made.
+
+    Nothing on this page is recomputed. Everything shown was produced by the
+    scan; the arrangement is the only thing that belongs to the view. #}
+
+{% block content %}
+{% set report_tone = 'unsure' if v.untrained else tone %}
+{% set headline = 'A score is not available yet' if v.untrained else (v.plain.headline if v.plain else v.label) %}
+
+<div class="result-page wrap" id="report" data-host="{{ parts.hostname }}">
+
+  <div class="page-heading">
+    <span>Link assessment</span>
+    <a class="text-action no-export" href="#another-link">Check another link</a>
+  </div>
+
+  {# --- the answer ------------------------------------------------------ #}
+  <section class="glass-panel result-summary is-{{ report_tone }} reveal" aria-labelledby="verdict-title">
+    <div class="summary-meta">
+      <span class="status-label">{{ 'Scoring unavailable' if v.untrained else tone_word }}</span>
+      {#  Whether this came from cache is the operator's business on their own
+          instance, and an oracle on a shared one: it tells a stranger whether
+          someone else has checked this exact URL before. #}
+      <span data-provenance>{{ 'Evidence' if shared_instance else ('Saved evidence' if from_cache else 'New evidence') }}</span>
+    </div>
+
+    <p class="summary-domain">{{ parts.hostname }}</p>
+    <h1 id="verdict-title">{{ headline }}</h1>
+
+    <p class="summary-reason">
+      {{- 'The evidence below was collected, but no scoring model has been trained.'
+          if v.untrained else main_reason -}}
+    </p>
+    {% if not v.untrained and v.plain and v.plain.subhead and v.plain.subhead != main_reason %}
+    <p class="summary-context">{{ v.plain.subhead }}</p>
+    {% endif %}
+
+    <div class="summary-advice">
+      <h2>What to do next</h2>
+      <p>
+        {{- 'Check the address through a source you trust before entering personal information.'
+            if v.untrained else (v.plain.advice if v.plain else v.note) -}}
+      </p>
+    </div>
+
+    {#  Anything that materially limits this result is said here, in the
+        summary, rather than left for a reader to discover in the technical
+        record they may never open. #}
+    {% if v.plain and v.plain.confidence %}
+    <p class="summary-limit">{{ v.plain.confidence }}</p>
+    {% endif %}
+    {% if missing_sources %}
+    <p class="summary-limit">
+      <a href="#evidence">{{ missing_sources|length }}
+      {{ 'source' if missing_sources|length == 1 else 'sources' }} could not return the
+      information requested.</a>
+    </p>
+    {% endif %}
+    {% if v.review and v.review.abstained %}
+    <p class="summary-limit">The cross-check could not settle this one.
+      <a href="#rules">Read the unresolved concerns</a> before relying on the result.</p>
+    {% endif %}
+    {% if v.review and v.review.override %}
+    <p class="summary-limit">A decisive rule overruled the model score.
+      <a href="#rules">See the rule</a>.</p>
+    {% endif %}
+
+    <div class="action-row no-export">
+      <a class="btn btn--plain" href="#opened-link">I already opened this link</a>
+      <button class="btn btn--plain" type="button" id="download-report">Download report</button>
+    </div>
+
+    <div class="summary-footer">
+      <span>Evidence collected <time datetime="{{ collected_at }}" data-local-time>{{ collected_at }}</time></span>
+      <span>{{ v.collectors_ok }} of {{ v.collectors_total }} attempted sources returned data</span>
+    </div>
+    <p id="report-status" class="action-status no-export" role="status" aria-live="polite"></p>
+  </section>
+
+  {% if render_note %}
+  <div class="notice reveal">
+    <h2>Page scripts were not run</h2>
+    <p>{{ render_note|capitalize }}. A deeper check unlocks only once an ordinary check has come
+      back inconclusive.</p>
+  </div>
+  {% endif %}
+
+  {# --- why ------------------------------------------------------------- #}
+  <section class="result-section reveal" aria-labelledby="findings-title">
+    <div class="section-heading">
+      <h2 id="findings-title">Why this result</h2>
+    </div>
+    <div class="glass-panel findings-panel">
+      {% for kind, texts in finding_groups %}
+      <div class="finding-group">
+        <h3>
+          {{- 'Reasons for concern' if kind == 'bad'
+              else ('Reassuring details' if kind == 'good' else 'Context for the decision') -}}
+        </h3>
+        {% for text in texts %}
+        <div class="finding-row">
+          <span class="finding-tag {{ kind }}">
+            {{- 'Concern' if kind == 'bad' else ('Reassuring' if kind == 'good' else 'Context') -}}
+          </span>
+          <p>{{ text }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="panel-empty">No plain-language findings were produced for this check. The
+        collected evidence is below.</p>
+      {% endfor %}
+
+      {% if missing_sources %}
+      <div class="finding-group">
+        <h3>What we could not check</h3>
+        {% for c in missing_sources %}
+        <div class="finding-row">
+          <span class="finding-tag neutral">{{ 'Timed out' if c.status == 'timeout' else 'Failed' }}</span>
+          <p>{{ source_names.get(c.name, c.name) }}<span class="row-detail">{{ c.detail|plain_failure }}</span></p>
+          <a class="text-action no-export" href="#{{ c.id }}">View source</a>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  {# --- the address ------------------------------------------------------ #}
+  <section class="result-section reveal" id="address" aria-labelledby="address-title">
+    <div class="section-heading">
+      <h2 id="address-title">The address and where it leads</h2>
+    </div>
+    <div class="glass-panel address-panel">
+      <div class="address-heading">
+        <h3>The address you submitted</h3>
+      </div>
+      {% with hide_legend = true %}{% include "_parts.html" %}{% endwith %}
+      <details class="record-fold">
+        <summary>Show the full address</summary>
+        <div class="fold-content"><p class="raw-value" id="submitted-address">{{ url }}</p></div>
+      </details>
+
+      {% if destination %}
+      <div class="address-heading">
+        <h3>Where it finished</h3>
+      </div>
+      {% with parts = destination_parts, hide_legend = true %}{% include "_parts.html" %}{% endwith %}
+      <details class="record-fold">
+        <summary>Show the full destination</summary>
+        <div class="fold-content"><p class="raw-value" id="final-address">{{ destination }}</p></div>
+      </details>
+      {% else %}
+      <p class="summary-limit">The page never came back, so there is no confirmed destination to
+        show for this check.</p>
+      {% endif %}
+
+      {% if redirect_hops %}
+      <details class="record-fold">
+        <summary>The route it took
+          <span class="record-hint">{{ redirect_hops|length }}
+            {{ 'request' if redirect_hops|length == 1 else 'requests' }} recorded</span>
+        </summary>
+        <div class="fold-content">
+          <ol class="redirect-list">
+            {% for hop in redirect_hops %}
+            <li>
+              <p class="raw-value">{{ hop.url }}</p>
+              <dl class="data-list">
+                {% for k, val in hop.items() if k != 'url' %}
+                <div><dt>{{ k|replace('_', ' ')|capitalize }}</dt>
+                  <dd>{{ val if val is not none else 'Not reported' }}</dd></div>
+                {% endfor %}
+              </dl>
+            </li>
+            {% endfor %}
+          </ol>
+        </div>
+      </details>
+      {% endif %}
+
+      {% if parts.provider %}
+      <p class="summary-limit">This address is a free subdomain of {{ parts.provider }}. Its
+        registration records describe that provider, not whoever set this page up.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {# --- the record ------------------------------------------------------- #}
+  <section class="result-section technical-record reveal" aria-labelledby="technical-title">
+    <div class="section-heading">
+      <h2 id="technical-title">The technical record</h2>
+    </div>
+    <div class="record-nav no-export" role="tablist" aria-label="Technical record">
+      <button type="button" role="tab" id="tab-model" aria-controls="model" aria-selected="true" tabindex="0">The score</button>
+      <button type="button" role="tab" id="tab-rules" aria-controls="rules" aria-selected="false" tabindex="-1">Rules and decision</button>
+      <button type="button" role="tab" id="tab-evidence" aria-controls="evidence" aria-selected="false" tabindex="-1">Evidence sources</button>
+      <button type="button" role="tab" id="tab-check-details" aria-controls="check-details" aria-selected="false" tabindex="-1">About this check</button>
+    </div>
+
+    <div class="glass-panel records-panel">
+
+      <section class="record-tab-panel" id="model" role="tabpanel" aria-labelledby="tab-model" tabindex="0">
+        <div class="record-panel-heading">
+          <h3 id="heading-model">The score</h3>
+          <span class="record-hint">{{ 'Unavailable' if v.untrained else (pct|round|int|string) ~ ' / 100' }}</span>
+        </div>
+        <div class="fold-content">
+          {% if v.untrained %}
+          <div class="notice">
+            <h3>No scoring model has been trained</h3>
+            <p>The evidence on this page is real. The score is not, so it is not shown. Training
+              one is <code>npm run train</code>.</p>
+          </div>
+          {% else %}
+          <div class="model-overview">
+            <div class="model-figure">
+              <span class="model-number num">{{ pct|round|int }}</span><span class="model-of">/ 100</span>
+              <p>{{ v.probability_label }}</p>
+            </div>
+            <div class="model-threshold">
+              <h3>Flagged from {{ threshold_pct|round(1) }}</h3>
+              <p>The model's operating line. The result above also accounts for the rules, which
+                can move it either way.</p>
+            </div>
+          </div>
+
+          <div class="score-chart" role="img"
+               aria-label="Scored {{ pct|round|int }} out of 100. Flagged from {{ threshold_pct|round(1) }}{% if v.interval_low is not none %}. Interval {{ (v.interval_low * 100)|round(1) }} to {{ (v.interval_high * 100)|round(1) }}{% endif %}.">
+            <div class="score-track">
+              {% if band_left is not none and band_width is not none %}
+              <span class="score-band" style="left:{{ band_left }}%;width:{{ band_width }}%"></span>
+              {% endif %}
+              <span class="score-threshold" style="left:{{ threshold_pct }}%"></span>
+              <span class="score-point" style="left:{{ pct }}%"></span>
+            </div>
+            <div class="score-labels">
+              <span>0, lower estimated risk</span>
+              <span>100, higher estimated risk</span>
+            </div>
+          </div>
+
+          {% if v.interval_low is not none %}
+          <p class="score-note">The shaded band runs {{ (v.interval_low * 100)|round(1) }} to
+            {{ (v.interval_high * 100)|round(1) }}. It measures how much the score moves between
+            models fitted on different resamples of the training data. It is not a measure of
+            how much evidence this scan managed to collect.</p>
+          {% endif %}
+          {% if v.review and v.review.override %}
+          <p class="score-note">This score did not decide the result: {{ v.review.override }}.</p>
+          {% endif %}
+          {% endif %}
+
+          {% if v.explain_error %}
+          <div class="notice"><h3>Contributions unavailable</h3>
+            <p>{{ v.explain_error }} The per-signal breakdown could not be produced.</p></div>
+          {% endif %}
+
+          {% if v.reasons %}
+          <h3>What moved the score</h3>
+          <p>The {{ v.reasons|length }} strongest of {{ v.scored_features|length }} scored signals.
+            A positive number pushed toward a scam, a negative one away from it. These are
+            log-odds, not points out of a hundred.</p>
+          {% for r in v.reasons %}
+          <div class="contribution">
+            <div class="contribution-heading">
+              <p>{{ r.text }}</p>
+              <span class="finding-tag {{ 'bad' if r.contribution > 0 else 'good' }} num">{{ '%+.2f'|format(r.contribution) }}</span>
+            </div>
+            <div class="contribution-foot">
+              <span>{{ r.rank }}. {{ r.feature }}</span>
+              <span class="contribution-track {{ 'is-bad' if r.contribution > 0 else 'is-good' }}" aria-hidden="true">
+                <span style="width:{{ [(r.contribution|abs) / 2.4 * 50, 50]|min }}%"></span>
+              </span>
+            </div>
+          </div>
+          {% endfor %}
+          {% endif %}
+
+          <details class="record-fold">
+            <summary>How the score was judged</summary>
+            <div class="fold-content">
+              <p>{{ v.operating_note }}</p>
+              {% if v.interval_low is not none %}
+              <p>The band is a 90% interval across {{ v.interval_members }} models fitted on
+                resamples of the training data.</p>
+              {% endif %}
+              <p>{{ v.model_header }}</p>
+              <h3>Every scored feature</h3>
+              <ul class="feature-names">{% for name in v.scored_features %}<li>{{ name }}</li>{% endfor %}</ul>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="record-tab-panel" id="rules" role="tabpanel" aria-labelledby="tab-rules" tabindex="0" hidden>
+        <div class="record-panel-heading">
+          <h3 id="heading-rules">Rules and decision</h3>
+          <span class="record-hint">{{ v.review.fired|length if v.review else 0 }} fired</span>
+        </div>
+        <div class="fold-content">
+          <p>Fixed checks read the same evidence the model does. A decisive rule can overrule the
+            score in either direction.</p>
+
+          {% if v.review and v.review.override %}
+          <div class="notice"><h3>The score was overruled</h3><p>{{ v.review.override|capitalize }}.</p></div>
+          {% endif %}
+
+          {% for r in (v.review.fired if v.review else [])|sort(attribute='weight') %}
+          <div class="rule-row">
+            <div class="rule-row__marks">
+              <span class="finding-tag {{ 'bad' if r.direction > 0 else 'good' }}">{{ r.weight|capitalize }}</span>
+              <span class="row-detail">{{ 'Toward a scam' if r.direction > 0 else 'Toward safe' }}</span>
+            </div>
+            <p>{{ r.why }}</p>
+          </div>
+          {% else %}
+          <p class="panel-empty">No rule fired on this evidence.</p>
+          {% endfor %}
+
+          {% if v.review and v.review.blocking %}
+          <h3>Unresolved concerns</h3>
+          <p>These are what stopped the cross-check reaching a settled decision.</p>
+          <ul class="plain-list">{% for c in v.review.blocking %}<li>{{ c }}</li>{% endfor %}</ul>
+          {% endif %}
+          {% if v.review and v.review.concerns %}
+          <h3>Noted, but not decisive</h3>
+          <ul class="plain-list">{% for c in v.review.concerns %}<li>{{ c }}</li>{% endfor %}</ul>
+          {% endif %}
+
+          <dl class="data-list">
+            <div><dt>The rules concluded</dt>
+              <dd>{{ v.review.rule_verdict|replace('_', ' ') if v.review else 'Not available' }}</dd></div>
+            <div><dt>The model concluded</dt>
+              <dd>{{ v.review.model_verdict|replace('_', ' ') if v.review else 'Not available' }}</dd></div>
+            <div><dt>Cross-check decision</dt>
+              <dd>{{ v.review.decision|replace('_', ' ') if v.review else 'Not available' }}</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="record-tab-panel" id="evidence" role="tabpanel" aria-labelledby="tab-evidence" tabindex="0" hidden>
+        <div class="record-panel-heading">
+          <h3 id="heading-evidence">Evidence sources</h3>
+          <span class="record-hint">{{ v.collectors_ok }} of {{ v.collectors_total }} answered</span>
+        </div>
+        <div class="fold-content">
+          <p>A source that could not answer is recorded as such rather than dropped. Ones
+            that do not apply to this address are marked skipped and left out of the count.</p>
+
+          <div class="source-controls no-export">
+            <label for="source-filter">Show
+              <select id="source-filter">
+                <option value="all">All sources</option>
+                <option value="ok">Returned data</option>
+                <option value="failed">Failed or timed out</option>
+                <option value="skipped">Skipped</option>
+              </select>
+            </label>
+            <div class="action-row">
+              <button type="button" class="text-action" id="sources-expand">Expand all</button>
+              <button type="button" class="text-action" id="sources-collapse">Collapse all</button>
+            </div>
+          </div>
+          <p id="source-count" class="row-detail no-export" role="status"></p>
+
+          {% for c in evidence_sources %}
+          <details class="source-record record-fold" id="{{ c.id }}" data-status="{{ c.status }}">
+            <summary>
+              <span class="source-title">{{ source_names.get(c.name, c.name) }}<small>{{ c.name }}</small></span>
+              <span class="source-meta">
+                <span class="status-chip s-{{ c.status }}">
+                  {{- {'ok': 'Returned data', 'failed': 'Failed', 'timeout': 'Timed out',
+                       'skipped': 'Skipped'}.get(c.status, c.status) -}}
+                </span>
+                <span class="num">{{ '%.2f'|format(c.elapsed_s) }}s</span>
+              </span>
+            </summary>
+            <div class="fold-content">
+              <p>{{ c.detail }}</p>
+              <dl class="data-list">
+                {% for field in c.fields %}
+                <div>
+                  <dt>{{ field.key }}</dt>
+                  <dd>
+                    {% if field.large %}
+                    <details class="value-fold">
+                      {% if field.truncated %}
+                      <summary>Show the first {{ '{:,}'.format(field.value|length) }} of {{ '{:,}'.format(field.length) }} characters</summary>
+                      {% else %}
+                      <summary>Show the full value ({{ field.length }} characters)</summary>
+                      {% endif %}
+                      <div class="value-fold__reveal">
+                        <pre id="value-{{ c.id }}-{{ loop.index }}">{{ field.value }}</pre>
+                        {% if field.truncated %}
+                        <p class="row-detail">The rest is left out to keep this page small.</p>
+                        {% endif %}
+                        <button type="button" class="text-action no-export"
+                                data-copy="value-{{ c.id }}-{{ loop.index }}">Copy value</button>
+                      </div>
+                    </details>
+                    {% else %}
+                    <span id="value-{{ c.id }}-{{ loop.index }}">{{ field.value }}</span>
+                    {% endif %}
+                  </dd>
+                </div>
+                {% else %}
+                <div><dt>Returned</dt><dd>Nothing. This source came back with no fields.</dd></div>
+                {% endfor %}
+              </dl>
+            </div>
+          </details>
+          {% endfor %}
+
+          <details class="record-fold" id="observations">
+            <summary>What was read out of it
+              <span class="record-hint">{{ v.features_present }} of {{ v.features_total }} present</span>
+            </summary>
+            <div class="fold-content">
+              {% for title, rows in v.evidence_groups %}
+              <h3>{{ title|capitalize }}</h3>
+              <dl class="data-list">
+                {% for key, val, absent in rows %}
+                <div><dt>{{ key }}</dt>
+                  <dd>{{ val }}{% if absent %}<span class="row-detail">Missing or limited</span>{% endif %}</dd></div>
+                {% endfor %}
+              </dl>
+              {% endfor %}
+              <details class="record-fold">
+                <summary>Every extracted feature</summary>
+                <div class="fold-content">
+                  <dl class="data-list">
+                    {% for f in observation_rows %}
+                    <div><dt>{{ f.name }}</dt>
+                      <dd>{{ f.value if f.present else 'Not reported' }}
+                        {%- if f.detail %}<span class="row-detail">{{ f.detail }}</span>{% endif %}</dd></div>
+                    {% endfor %}
+                  </dl>
+                </div>
+              </details>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="record-tab-panel" id="check-details" role="tabpanel" aria-labelledby="tab-check-details" tabindex="0" hidden>
+        <div class="record-panel-heading">
+          <h3 id="heading-check-details">About this check</h3>
+          <span class="record-hint">When it ran, and its limits</span>
+        </div>
+        <div class="fold-content">
+          <dl class="data-list">
+            <div><dt>Evidence collected</dt>
+              <dd><time datetime="{{ collected_at }}" data-local-time>{{ collected_at }}</time></dd></div>
+            <div><dt>This result produced</dt>
+              <dd><time datetime="{{ v.scanned_at }}" data-local-time>{{ v.scanned_at }}</time></dd></div>
+            <div><dt>Evidence</dt>
+              <dd>{% if not shared_instance %}{{ 'Reused from an earlier scan' if from_cache
+                    else 'Fetched for this scan' }}, {% endif %}{{ bundle_size_kb }} KB</dd></div>
+            <div><dt>Bundle reference</dt>
+              <dd><span class="mono" id="bundle-reference">{{ bundle_hash }}</span>
+                <button type="button" class="text-action no-export"
+                        data-copy="bundle-reference">Copy</button></dd></div>
+            <div><dt>Sources that answered</dt><dd>{{ v.collectors_ok }} of {{ v.collectors_total }}</dd></div>
+            <div><dt>Not applicable here</dt><dd>{{ v.collectors_skipped|join(', ') or 'None' }}</dd></div>
+            <div><dt>Details extracted</dt><dd>{{ v.features_present }} of {{ v.features_total }}</dd></div>
+            <div><dt>Assessment label</dt><dd>{{ v.label }}</dd></div>
+            <div><dt>Assessment note</dt><dd>{{ v.note }}</dd></div>
+          </dl>
+          <h3>The limits this run held to</h3>
+          <dl class="data-list">
+            {% for key, val in scan_limits %}<div><dt>{{ key }}</dt><dd>{{ val }}</dd></div>{% endfor %}
+          </dl>
+        </div>
+      </section>
+
+    </div>
+  </section>
+
+  {# --- after the fact ---------------------------------------------------- #}
+  <section class="result-section reveal" id="opened-link">
+    <details class="glass-panel help-panel record-fold">
+      <summary>I already opened this link</summary>
+      <div class="fold-content">
+        <p>This check looked at the page from the outside. It cannot see what happened on your
+          device, so start from what you did.</p>
+        <details class="record-fold">
+          <summary>I only opened the page</summary>
+          <div class="fold-content"><p>Close it if you do not trust it. Do not enter anything and
+            do not accept a download. Opening a page on its own does not tell us your device was
+            affected.</p></div>
+        </details>
+        <details class="record-fold">
+          <summary>I entered a password or a security code</summary>
+          <div class="fold-content"><p>Go to the real service yourself, using its own app or an
+            address you type from memory, and change that password. Check the active sessions on
+            the account and sign the others out. If you use that password anywhere else, change
+            it there too.</p></div>
+        </details>
+        <details class="record-fold">
+          <summary>I entered card or bank details</summary>
+          <div class="fold-content"><p>Call your bank or card provider now, through its app or
+            the number printed on the card. Tell them what you entered and do what they say.</p></div>
+        </details>
+        <details class="record-fold">
+          <summary>I downloaded or opened a file</summary>
+          <div class="fold-content"><p>Do not open it again. Run whatever security scan your
+            device has. If it is a work machine, tell your IT team what happened.</p></div>
+        </details>
+      </div>
+    </details>
+  </section>
+
+  <section class="result-section no-export reveal" aria-labelledby="next-title">
+    <div class="section-heading"><h2 id="next-title">Want another look?</h2></div>
+    <div class="action-row">
+      <a class="btn btn--plain" href="/scan?url={{ url|urlencode }}">Check it again</a>
+      {% if js_available and can_rerun_js %}
+      <a class="btn btn--plain" href="/scan?url={{ url|urlencode }}&amp;render=true">Run the deeper check</a>
+      {% endif %}
+      {% if feedback_enabled %}<a class="text-action" href="#feedback">Report a problem</a>{% endif %}
+    </div>
+    {% if js_available and can_rerun_js %}
+    <p class="row-detail">The deeper check runs the page's own scripts, so it can read content
+      that never loaded the first time. Forms stay untouched and downloads stay blocked.</p>
+    {% endif %}
+  </section>
+
+  {% if feedback_enabled %}
+  <section class="result-section no-export reveal" id="feedback">
+    <details class="glass-panel record-fold feedback-panel" {% if feedback_open or feedback_thanks or feedback_unsaved %}open{% endif %}>
+      <summary>Report a problem with this result</summary>
+      <div class="fold-content">
+        {% if feedback_unsaved %}
+        <div class="notice" role="alert"><p>Your report could not be saved, so nothing was recorded.
+          Try sending it again in a minute.</p></div>
+        {% endif %}
+        {% if feedback_thanks %}
+        <div class="notice" role="status"><p>Saved, alongside this check's evidence.</p></div>
+        {% endif %}
+        <p>A wrong verdict can be used to retrain the model. Wrong evidence is logged instead,
+          and never trained on.</p>
+        <form method="post" action="/feedback">
+          <input type="hidden" name="url" value="{{ url }}">
+          <input type="hidden" name="r" value="{{ report_token }}">
+          <fieldset>
+            <legend>What looks wrong?</legend>
+            <div class="choices">
+              {% for kind, label, detail in feedback_kinds %}
+              <label class="choice">
+                <input type="radio" name="kind" value="{{ kind }}" required>
+                <span><span class="choice__label">{{ label }}</span>
+                  <span class="choice__hint">{{ detail }}</span></span>
+              </label>
+              {% endfor %}
+            </div>
+          </fieldset>
+          <label class="label" for="feedback-note">Anything else? (optional)</label>
+          <textarea class="field" id="feedback-note" name="note" rows="3" maxlength="500"></textarea>
+          <div class="action-row">
+            <button class="btn btn--primary" type="submit">Send the report</button>
+            <button type="button" class="text-action" id="feedback-cancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </details>
+  </section>
+  {% endif %}
+
+  <section class="result-section no-export reveal" id="another-link">
+    {% with check_variant = 'bar' %}{% include "_check.html" %}{% endwith %}
+  </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="/static/result.js?v={{ asset_version }}" defer></script>{% endblock %}

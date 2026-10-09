@@ -1,0 +1,25 @@
+{# The specimen: an address broken into its parts, with the registrable domain
+   set solid and ruled underneath.
+
+   This is the one piece of reading a person can take away and use without
+   this tool ever again: only the marked part says who owns the site.
+   Attackers put a brand in the subdomain or the path exactly because people
+   read left to right and stop early, so those parts are deliberately quiet. #}
+<div class="specimen"
+     aria-label="This address, broken into its parts">
+  {%- if parts.scheme %}<span class="specimen__q">{{ parts.scheme }}://</span><wbr>{% endif -%}
+  {%- if parts.userinfo %}<span class="specimen__q">{{ parts.userinfo }}@</span><wbr>{% endif -%}
+  {%- if parts.subdomain %}<span class="specimen__q">{{ parts.subdomain }}.</span><wbr>{% endif -%}
+  <span class="specimen__host">{{ parts.registrable or parts.hostname }}</span><wbr>
+  {%- if parts.port %}<span class="specimen__q">:{{ parts.port }}</span><wbr>{% endif -%}
+  {%- if parts.rest %}<span class="specimen__q">{{ parts.rest }}</span>{% endif -%}
+</div>
+{% if not hide_legend %}
+<p class="specimen__note">
+  {%- if parts.provider %}The marked part is <b>the site you are really visiting</b>. It is a
+  free address handed out by {{ parts.provider }}, so nobody had to register it or prove who
+  they are to get it.
+  {%- else %}The marked part is <b>the site you are really visiting</b>.<br>Everything around it
+  can be set to anything at all.{% endif -%}
+</p>
+{% endif %}
