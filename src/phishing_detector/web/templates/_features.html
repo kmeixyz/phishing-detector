@@ -1,0 +1,78 @@
+<section class="band wrap how-section" aria-labelledby="how-title">
+  <div class="section-heading reveal"><h2 id="how-title">{{ t("How we check suspicious links", "我们如何检查可疑链接") }}</h2></div>
+  <div class="feature-grid">
+    <article class="feature-card reveal">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">{{ t("Address example", "地址示例") }}</span>
+        <div class="drawing drawing-address">
+          <div class="address-fragment">secure.paypal.com.</div>
+          <br>
+          <div class="domain-fragment">account-verify.co</div>
+          <div class="path-fragment">/login</div>
+          <div class="annotation"><span class="annotation-line"></span>{{ t("Registered domain", "注册域名") }}</div>
+          <p class="drawing-caption">{% if zh %}熟悉的名称可能出现在<br>真实域名的前面。{% else %}A familiar name can appear<br>before the real domain.{% endif %}</p>
+        </div>
+      </div>
+      <div class="feature-copy"><p>{% if zh %}<b>我们找出真实的域名。</b>地址中其他位置出现的熟悉品牌名称，并不能改变网站的所有者。{% else %}<b>We identify the real domain.</b> Familiar brand names elsewhere in the address do not change who owns it.{% endif %}</p></div>
+    </article>
+    <article class="feature-card reveal" style="--in-delay:60ms">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">{{ t("Redirect example", "跳转示例") }}</span>
+        <div class="drawing drawing-route">
+          <div class="route-stop"><span class="route-dot"></span><div><small>{{ t("Link received", "收到的链接") }}</small><b>short.example/link</b></div></div>
+          <div class="route-stop"><span class="route-dot"></span><div><small>{{ t("Redirect", "跳转") }}</small><b>redirect.example</b></div></div>
+          <div class="route-stop route-stop--last"><span class="route-dot"></span><div><small>{{ t("Final destination", "最终目的地") }}</small><b>destination.example</b></div></div>
+        </div>
+      </div>
+      <div class="feature-copy"><p>{% if zh %}<b>我们追踪每一次跳转。</b>每个地址都会显示，链接在页面加载之前是否先去了别的地方。{% else %}<b>We trace every redirect.</b> Each address shows whether the link goes somewhere else before the page loads.{% endif %}</p></div>
+    </article>
+    <article class="feature-card reveal" style="--in-delay:120ms">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">{{ t("Page example", "页面示例") }}</span>
+        <div class="drawing drawing-page">
+          <div class="page-line"><b>{{ t("Sign in", "登录") }}</b><span class="sample-site-icon">A</span></div>
+          <div class="sample-field"><span>{{ t("Password field", "密码框") }}</span><span class="password-dots">••••••••</span></div>
+          <div class="page-destination"><small>{{ t("Form destination", "表单提交到") }}</small><b>another-site.example</b></div>
+          <div class="drawing-caption">{% if zh %}页面内容和提交目的地<br>会一起检查。{% else %}Page content and destinations<br>are inspected together.{% endif %}</div>
+        </div>
+      </div>
+      <div class="feature-copy"><p>{% if zh %}<b>我们检查页面本身。</b>密码框、表单、链接以及盗用的品牌元素，会暴露它想要你提供什么。{% else %}<b>We inspect the page.</b> Password fields, forms, links, and copied branding reveal what it asks for.{% endif %}</p></div>
+    </article>
+    <article class="feature-card reveal">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">{{ t("Records checked", "查询的记录") }}</span>
+        <div class="drawing drawing-history">
+          <div class="history-line"><span></span><span></span><span></span></div>
+          <div class="history-labels"><span>{{ t("Registered", "注册") }}</span><span>{{ t("Updated", "更新") }}</span><span>{{ t("Checked", "检查") }}</span></div>
+          <div class="diagram-row"><span>{{ t("Registration", "注册信息") }}</span><b>{{ t("Age and owner", "时间与所有者") }}</b></div>
+          <div class="diagram-row"><span>{{ t("Certificate", "证书") }}</span><b>{{ t("Dates and validity", "日期与有效性") }}</b></div>
+          <div class="diagram-row"><span>{{ t("Hosting", "托管") }}</span><b>{{ t("Network and location", "网络与位置") }}</b></div>
+        </div>
+      </div>
+      <div class="feature-copy"><p>{% if zh %}<b>我们查看它的历史。</b>注册信息、证书和托管情况，能为结果提供更多背景。{% else %}<b>We check its history.</b> Registration, certificates, and hosting details add context to the result.{% endif %}</p></div>
+    </article>
+    <article class="feature-card reveal" style="--in-delay:60ms">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">{{ t("How the decision is made", "结论是如何得出的") }}</span>
+        <div class="drawing drawing-decision">
+          <div class="decision-line"><b>{{ t("Rules", "规则") }}</b><span>{{ t("Checks on the evidence", "对证据的检查") }}</span></div>
+          <div class="decision-line"><b>{{ t("Model", "模型") }}</b><span>{{ t("Patterns in the evidence", "证据中的规律") }}</span></div>
+          <div class="decision-join"></div>
+          <div class="decision-outcome"><b>{{ t("One explained result", "一个有解释的结果") }}</b><span>{{ t("Disagreements stay visible", "分歧会清楚显示") }}</span></div>
+        </div>
+      </div>
+      <div class="feature-copy"><p>{% if zh %}<b>规则与评分相互对照。</b>两者的分歧以及改变结果的规则都会清楚显示。{% else %}<b>Rules and scoring are compared.</b> Disagreements and rules that change the result stay visible.{% endif %}</p></div>
+    </article>
+    <article class="feature-card reveal" style="--in-delay:120ms">
+      <div class="feature-art" aria-hidden="true">
+        <span class="illustration-label">{{ t("Limits on the check", "检查的限制") }}</span>
+        <div class="drawing drawing-contained">
+          <div class="container-input">{{ t("The link you submit", "你提交的链接") }}</div>
+          <div class="container-connector"></div>
+          <div class="container-boundary"><b>{{ t("Restricted checker", "受限的检查工具") }}</b><div class="diagram-row"><span>{{ t("Forms", "表单") }}</span><strong>{{ t("Untouched", "不触碰") }}</strong></div><div class="diagram-row"><span>{{ t("Downloads", "下载") }}</span><strong>{{ t("Blocked", "已拦截") }}</strong></div><div class="diagram-row"><span>{{ t("Time and size", "时间与大小") }}</span><strong>{{ t("Limited", "有限制") }}</strong></div></div>
+        </div>
+      </div>
+      <div class="feature-copy"><p>{% if zh %}<b>检查始终受到隔离。</b>它从不填写表单或接受下载，并且有时间和大小限制。{% else %}<b>The check stays contained.</b> It never fills forms or accepts downloads, and it has time and size limits.{% endif %}</p></div>
+    </article>
+  </div>
+</section>

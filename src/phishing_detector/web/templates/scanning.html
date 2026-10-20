@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ t("Phishing Detector", "钓鱼网站检测") }} | {{ t('Interrupted', '已中断') if failed else t('Checking...', '正在检查……') }}{% endblock %}
+{% block content %}
+<section class="scan-page wrap" data-url="{{ url }}" data-render="{{ 'true' if render else 'false' }}" data-failed="{{ 'true' if failed else 'false' }}">
+  <div class="page-heading"><span>{{ t("Link assessment", "链接评估") }}</span><a class="text-action" href="{{ base }}/">{{ t("Check a different link", "检查其他链接") }}</a></div>
+  <div class="glass-panel scan-panel">
+    <span class="status-label">{{ t('Interrupted', '已中断') if failed else t('Check in progress', '正在检查') }}</span>
+    <h1 id="scan-title">{{ t('This link could not be checked', '无法检查这个链接') if failed else t('Checking your link', '正在检查你的链接') }}</h1>
+    <p class="scan-lede" id="scan-lede">{{ t('The check did not finish. Try again or check a different address.', '检查没有完成。请重试，或检查其他地址。') if failed else t('We are gathering the evidence. Your result will open when the check finishes.', '我们正在收集证据。检查完成后会自动打开结果。') }}</p>
+    <noscript><div class="notice"><h2>{{ t("Your browser is not running scripts", "你的浏览器没有运行脚本") }}</h2><p>{{ t("This page needs them to show the check as it runs, so the indicators here are not moving. You can still check the link: the result opens when the check finishes, which can take up to a minute.", "本页面需要脚本才能实时显示检查进度，所以这里的指示不会变化。你仍然可以检查这个链接：检查完成后会打开结果，最多可能需要一分钟。") }}</p><div class="action-row"><a class="btn btn--primary" href="{{ base }}/result?url={{ url|urlencode }}&amp;live=true{{ '&amp;render=true' if render else '' }}">{{ t("Check without live progress", "不显示实时进度直接检查") }}</a></div></div></noscript>
+    {% with hide_legend = true %}{% include "_parts.html" %}{% endwith %}
+    <div id="scan-live" {% if failed %}hidden{% endif %}>
+      <div class="progress" role="progressbar" aria-label="{{ t('Checks finished', '已完成的检查') }}" aria-valuemin="0" aria-valuemax="{{ collectors|length }}" aria-valuenow="0"><div class="progress__fill" id="bar"></div></div>
+      <p id="headline" class="progress-label" role="status" aria-live="polite">{{ t("Starting the check...", "正在开始检查……") }}</p>
+      <p class="scan-current" id="scan-current">{{ t("Looking up the page and its registration records.", "正在查询页面及其注册记录。") }}</p>
+      <div class="result-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+    </div>
+    <div id="scan-recovery" {% if not failed %}hidden{% endif %}><p id="recovery-message" role="alert">{{ t("The connection or a required service may be unavailable. No completed result is available from this attempt.", "网络连接或某项必需的服务可能暂时不可用。这次尝试没有得到完整的结果。") }}</p><pre id="recovery-detail" hidden></pre><div class="action-row"><a class="btn btn--primary" href="{{ base }}/scan?url={{ url|urlencode }}{{ '&render=true' if render else '' }}">{{ t("Try again", "重试") }}</a><a class="btn btn--plain" href="{{ base }}/">{{ t("Check a different link", "检查其他链接") }}</a></div></div>
+    <p class="scan-assurance">{{ t("The checker does not fill in forms or enter passwords. Downloads are blocked.", "检查工具不会填写表单或输入密码。下载会被拦截。") }}</p>
+  </div>
+  <details class="glass-panel record-fold scan-sources" {% if failed %}open{% endif %}><summary>{{ t("Source activity", "各项查询进度") }} <span id="activity-count">{{ t(collectors|length ~ " checks", collectors|length ~ " 项检查") }}</span></summary><div class="fold-content"><div class="scan-steps" id="rows">{% for name in collectors %}<div class="scan-step" data-name="{{ name }}"><span>{{ source_names.get(name, name) }}</span><span class="step-detail">{{ t('Not completed', '未完成') if failed else t('Waiting', '等待中') }}</span></div>{% endfor %}</div></div></details>
+  <details class="glass-panel record-fold"><summary>{{ t("Limits on this check", "本次检查的限制") }}</summary><div class="fold-content"><p>{{ t("Checks run in a restricted environment. Page scripts may run when enabled and needed to inspect the page.", "检查在受限的环境中进行。在开启相关功能且需要检查页面时，可能会运行页面脚本。") }}</p><dl class="data-list">{% for k, val in envelope if k != 'Javascript execution' %}<div><dt>{{ k|say }}</dt><dd>{{ val|say }}</dd></div>{% endfor %}<div><dt>{{ t("Page scripts", "页面脚本") }}</dt><dd>{{ t('Requested for this deeper check', '本次深入检查已请求运行') if render else (t('May run if the page needs them', '页面需要时可能会运行') if js_available else t('Unavailable', '不可用')) }}</dd></div></dl></div></details>
+</section>
+{% endblock %}
+{% block scripts %}{% if not failed %}<script src="/static/scanning.js?v={{ asset_version }}" defer></script>{% endif %}{% endblock %}
