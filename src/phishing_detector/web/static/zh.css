@@ -1,0 +1,17 @@
+/* Loaded only by the Chinese pages (base.html), so the stylesheets every
+   visitor downloads say nothing about them. The system's own Chinese
+   faces, after the system UI face so Latin in a mixed line -- an address, a
+   brand -- still sets the way it does on the English pages. And no negative
+   tracking: it is tuned for Latin display sizes, and pulls Han characters
+   into each other. */
+:root:lang(zh) {
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC",
+          "Source Han Sans SC", "Noto Sans SC", system-ui, "Segoe UI", Roboto,
+          sans-serif;
+  --track-display: 0em;
+  --track-tight:   0em;
+  --track-wide:    0.04em;
+}
+html:lang(zh) h1, html:lang(zh) h2, html:lang(zh) h3,
+html:lang(zh) .faq__title, html:lang(zh) [class*="__title"] { letter-spacing: 0; }

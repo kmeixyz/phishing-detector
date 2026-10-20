@@ -1,0 +1,68 @@
+# What the server imports, and nothing else. This file is what a deployment
+# installs -- Vercel reads it by name -- so it carries no test runner, no
+# linter and no browser. Those are in requirements-dev.txt, which includes
+# this one.
+#
+# HTTP / network collection
+httpx[http2]==0.28.1
+dnspython==2.8.0
+cryptography==50.0.1
+idna==3.19
+
+# Parsing
+beautifulsoup4==4.15.0
+lxml==6.1.3
+tldextract==5.3.2
+rapidfuzz==3.14.6
+
+# Modelling. No pandas and no shap: the serving path uses neither --
+# contributions come from model/treeshap.py -- and together with numba and
+# llvmlite they were 285 MB of a 500 MB Vercel function. Training needs both;
+# they are in requirements-dev.txt.
+numpy==2.1.3
+scikit-learn==1.5.2
+
+# Interface. Plain uvicorn: Vercel runs the ASGI app itself, and the
+# [standard] extras (uvloop, httptools, watchfiles) only matter locally.
+fastapi==0.141.1
+uvicorn==0.52.4
+jinja2==3.1.6
+python-multipart==0.0.32
+
+# Config
+python-dotenv==1.2.3
+
+# Everything the packages above pull in, pinned to the set a clean Linux
+# install resolved on 2026-09-24 and that the test suite and live scans were
+# run against. Left floating, each redeploy resolves afresh: on the day these
+# were pinned a fresh install already differed from a two-week-old one in
+# eight packages, joblib among them -- and joblib is what reads the fitted
+# model. Upgrade these deliberately, with the tests, not by redeploying.
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+certifi==2026.7.22
+cffi==2.1.1
+charset-normalizer==3.5.1
+click==8.5.0
+cloudpickle==3.1.2
+filelock==4.0.1
+h11==0.16.0
+h2==4.4.1
+hpack==4.2.0
+httpcore==1.0.9
+hyperframe==6.1.0
+joblib==1.6.0
+markupsafe==3.0.3
+pycparser==3.0
+pydantic==2.13.5
+pydantic-core==2.46.5
+requests==2.34.2
+requests-file==3.0.1
+scipy==1.18.1
+soupsieve==2.9.2
+starlette==1.7.0
+threadpoolctl==3.7.0
+typing-extensions==4.16.0
+typing-inspection==0.4.4
+urllib3==2.8.0

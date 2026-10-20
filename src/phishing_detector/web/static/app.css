@@ -1,0 +1,2421 @@
+/* Phishing Detector components.
+   Shared glass panels, SF Pro system typography, and one centered layout.
+   Results lead with the verdict and advice, followed by expandable evidence. */
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+* { min-width: 0; }
+
+html { max-width: 100%; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--t-base);
+  line-height: var(--lh-body);
+  letter-spacing: var(--track-tight);
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings carry the display tracking. It is applied here rather than on each
+   component so that nothing can be added later that quietly opts out of it. */
+h1, h2, h3 {
+  margin: 0;
+  line-height: var(--lh-snug);
+  letter-spacing: var(--track-display);
+  text-wrap: balance;
+}
+h3 { letter-spacing: var(--track-tight); }
+p  { margin: 0; text-wrap: pretty; }
+ul { margin: 0; padding: 0; list-style: none; }
+
+a  { color: var(--ink-blue); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+@media (hover: hover) { a:hover { color: var(--ink-blue-hi); } }
+
+button, input, textarea, select { font: inherit; color: inherit; letter-spacing: inherit; }
+
+/* Numbers that a reader compares down a column must not shuffle sideways. */
+.num { font-variant-numeric: tabular-nums; }
+
+/* Addresses, hashes and timings only. Ligatures off, because the whole job of
+   this face here is to keep rn from becoming m. */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0, "calt" 0;
+  letter-spacing: -0.005em;
+}
+
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--ink-blue);
+  outline-offset: 3px;
+  border-radius: var(--r-mark);
+}
+/* Sections receive a programmatic focus() on in-page navigation, for screen
+   readers, not sighted keyboard users — no visible outline for those. */
+[tabindex="-1"]:focus-visible { outline: none; }
+::selection { background: color-mix(in srgb, var(--ink-blue) 18%, transparent); }
+
+.skip {
+  position: fixed; top: var(--s-3); left: var(--s-3); z-index: 100;
+  transform: translateY(-160%);
+  padding: 10px 16px; border-radius: var(--r-ctl);
+  background: var(--ink-blue); color: var(--on-blue);
+  font-size: var(--t-sm); font-weight: 600; text-decoration: none;
+}
+.skip:focus-visible { transform: none; color: var(--on-blue); }
+
+.wrap { max-width: var(--page); margin-inline: auto; padding-inline: var(--gutter); }
+.measure { max-width: var(--measure); }
+
+/* ===========================================================================
+   Arrival
+
+   Sections fade up as they are scrolled to, once, and never again. The class
+   is added by script only when the browser can observe intersections, so with
+   no JavaScript everything is simply visible — the content is never behind an
+   animation that might not run.
+   =========================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  .js-reveal .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity var(--reveal), transform var(--reveal);
+    transition-delay: var(--in-delay, 0ms);
+  }
+  .js-reveal .reveal.is-in { opacity: 1; transform: none; }
+}
+
+/* ===========================================================================
+   Top bar
+
+   Slim and quiet, and translucent so the page passes underneath it rather than
+   stopping at it. One action lives here, on the right, and it is the same
+   action as the one in the middle of the page.
+   =========================================================================== */
+
+.topbar {
+  position: relative; z-index: 70;
+  background: color-mix(in srgb, var(--paper) 80%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0;
+}
+.topbar__in {
+  display: flex; align-items: center; gap: var(--s-4);
+  height: 64px;
+  max-width: var(--page); margin-inline: auto; padding-inline: var(--gutter);
+}
+
+.brand {
+  display: inline-flex; align-items: center;
+  color: var(--ink); text-decoration: none;
+  font-size: var(--t-sm); font-weight: 600; letter-spacing: var(--track-tight);
+}
+@media (hover: hover) { .brand:hover { color: var(--ink); } }
+.brand__name { white-space: nowrap; font-size: var(--t-md); }
+
+.topbar__spacer { flex: 1; }
+
+.topnav { display: flex; align-items: center; gap: var(--s-4); }
+.topnav a, .topnav button {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 34px; padding: 0 12px;
+  border-radius: var(--r-ctl);
+  color: var(--ink-2); font-size: var(--t-sm); font-weight: 500;
+  letter-spacing: var(--track-tight);
+  text-decoration: none;
+  transition: background var(--fast), color var(--fast);
+}
+@media (hover: hover) { .topnav a:hover, .topnav button:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); } }
+.topnav a[aria-current="page"] { color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.topnav button { border: 0; background: none; cursor: pointer; }
+.topnav svg { width: 16px; height: 16px; flex: none; }
+
+/* The one lit object in the chrome. The bloom underneath is the accent colour
+   escaping its own shape; without it a small blue pill on a white page reads
+   as pasted on rather than as the thing to press. */
+.cta {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 38px; padding: 0 17px;
+  border: var(--glass-edge); border-radius: var(--r-ctl);
+  background: var(--glass-sheen), var(--check-accent); color: var(--on-blue);
+  font-size: var(--t-sm); font-weight: 600; letter-spacing: var(--track-tight);
+  text-decoration: none; white-space: nowrap; cursor: pointer;
+  box-shadow: var(--glass-bevel);
+  transition: background var(--fast), box-shadow var(--fast), transform var(--fast);
+}
+@media (hover: hover) {
+  .cta:hover {
+    background: var(--glass-sheen), color-mix(in srgb, var(--check-accent) 92%, black); color: var(--on-blue);
+  }
+  .cta:active { transform: scale(.985); }
+}
+.cta svg { width: 15px; height: 15px; flex: none; }
+
+/* ===========================================================================
+   Shared type roles
+   =========================================================================== */
+
+.center { text-align: center; margin-inline: auto; }
+
+/* ===========================================================================
+   The specimen — an address broken into its parts.
+
+   The signature object of this interface. The registrable domain is set solid
+   and marked underneath; everything an attacker can write freely is set quiet.
+   Someone who reads this once has learned the only trick that reliably
+   protects them, and it works with no tool at all.
+   =========================================================================== */
+
+.specimen {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0, "calt" 0;
+  font-size: clamp(var(--t-md), 3.4vw, var(--t-xl));
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+  /* A long address has to wrap somewhere, and where it wraps matters: a
+     registrable domain split across two lines is the one thing a reader must
+     be able to take in whole. The parts are separated by <wbr>, and
+     `break-word` only cuts inside a run when that run cannot fit a line on its
+     own, so the break lands between parts and the domain stays intact. */
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+.specimen__q { color: var(--ink-3); font-weight: 400; }
+
+.specimen__host {
+  --specimen-accent: var(--ink-blue);
+  position: relative;
+  display: inline-block;
+  padding: 0 .16em;
+  margin: 0 .02em;
+  border-radius: var(--r-mark);
+  color: var(--ink);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--specimen-accent) 13%, transparent);
+  box-shadow: inset 0 -0.09em 0 var(--specimen-accent);
+}
+/* The annotation mark: a hairline bracket under the domain, the way an
+   examiner would rule under the part of a document that matters. */
+.specimen__host::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -0.34em;
+  height: 0.16em;
+  border: 0 solid var(--specimen-accent);
+  border-width: 0 1.5px 1.5px;
+  border-bottom-left-radius: 3px; border-bottom-right-radius: 3px;
+  opacity: .5;
+}
+
+.specimen__note {
+  margin-top: 1.15em;
+  max-width: 56ch;
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+  line-height: 1.55;
+}
+.specimen__note b { color: var(--ink); font-weight: 600; }
+
+/* The compact form, used in lists and history rows. */
+.specimen--inline { font-size: var(--t-sm); line-height: 1.4; letter-spacing: 0; }
+.specimen--inline .specimen__host::after { display: none; }
+.specimen--inline .specimen__host { box-shadow: inset 0 -1.5px 0 var(--specimen-accent); }
+
+/* ===========================================================================
+   The check field
+   =========================================================================== */
+
+.check { position: relative; }
+
+.check__label {
+  display: block;
+  margin-bottom: var(--s-2);
+  color: var(--ink);
+  font-size: calc(var(--t-lg) - 2px);
+  font-weight: 600;
+  letter-spacing: calc(var(--track-display) + 1px);
+}
+
+.check__row {
+  display: flex; align-items: center; gap: var(--s-2);
+  padding: 7px 7px 7px 18px;
+  background: var(--glass-sheen), linear-gradient(158deg, var(--card) 0%, var(--card-2) 100%);
+  border: var(--glass-edge);
+  border-radius: var(--r-panel);
+  box-shadow: var(--glass-bevel), var(--lift);
+  transition: border-color var(--fast), box-shadow var(--fast);
+}
+.check__row:focus-within {
+  border-color: var(--check-accent);
+  box-shadow: var(--glass-bevel), var(--lift), 0 0 0 4px color-mix(in srgb, var(--check-accent) 16%, transparent);
+}
+
+.check__input {
+  flex: 1;
+  min-height: 34px;
+  padding: 9px 0;
+  border: 0; background: none; resize: none;
+  color: var(--check-text);
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0, "calt" 0;
+  font-size: var(--t-sm);
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  white-space: nowrap; overflow-x: auto;
+  scrollbar-width: none;
+}
+.check__input::-webkit-scrollbar { display: none; }
+.check__input::placeholder { color: var(--check-placeholder); }
+.check__input:focus { outline: none; }
+
+.check__go {
+  flex: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 20px;
+  border: var(--glass-edge); border-radius: 13px;
+  background: var(--check-go-accent); color: var(--on-blue);
+  font-size: var(--t-sm); font-weight: 600; letter-spacing: var(--track-tight);
+  cursor: pointer;
+  box-shadow: var(--glass-bevel);
+  transition: background var(--fast), box-shadow var(--fast), transform var(--fast);
+}
+@media (hover: hover) {
+  .check__go:hover {
+    background: color-mix(in srgb, var(--check-go-accent) 92%, black);
+  }
+  .check__go:active { transform: scale(.98); }
+}
+.check__go svg { width: 16px; height: 16px; }
+
+/* The large landing-page form. */
+.check--hero .check__row { padding: 12px 12px 12px 30px; border-radius: 28px; }
+.check--hero .check__input { font-size: var(--t-md); min-height: 52px; padding: 16px 0; }
+.check--hero .check__go { min-height: 64px; padding: 0 32px; font-size: var(--t-md); border-radius: 19px; }
+.check--hero .check__go svg { width: 20px; height: 20px; }
+
+/* The compact bar carried on every result page. */
+.check--bar .check__row { padding: 5px 5px 5px 16px; border-radius: 14px; }
+.check--bar .check__go { min-height: 38px; padding: 0 16px; font-size: var(--t-xs); border-radius: 10px; }
+
+/* Sits directly under the field it belongs to, in the verdict red, so the
+   correction is read where the mistake was made rather than at the top of a
+   page the reader has already scrolled past. */
+.field-error {
+  margin-top: var(--s-2);
+  padding-left: var(--s-1);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--risk);
+}
+
+.check__note {
+  margin-top: var(--s-4);
+  color: var(--ink-3); font-size: var(--t-sm);
+}
+
+/* ===========================================================================
+   Landing page — the hero
+
+   Centred, and set on one axis: title, one sentence, the field, one line of
+   reassurance. Everything is the same width and everything is the same middle,
+   so the eye falls straight down to the thing it is meant to type into.
+   =========================================================================== */
+
+.hero { padding-block: clamp(var(--s-8), 11vh, var(--s-9)) var(--s-7); text-align: center; }
+
+.hero__title {
+  font-size: clamp(var(--t-sm), 4.9vw, 71px);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: calc(var(--track-display) + 1px);
+  white-space: nowrap;
+  margin-inline: auto;
+}
+.hero__title-accent {
+  position: relative;
+  display: inline-block;
+  padding: 0 .1em;
+  margin: 0 .02em;
+  border-radius: var(--r-mark);
+  color: var(--risk);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--risk) 13%, transparent);
+  box-shadow: inset 0 -0.09em 0 var(--risk);
+}
+.hero__title-accent::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -0.22em;
+  height: 0.16em;
+  border: 0 solid var(--risk);
+  border-width: 0 1.5px 1.5px;
+  border-bottom-left-radius: 3px; border-bottom-right-radius: 3px;
+  opacity: .5;
+}
+/* The single line is what gives the headline its weight, but holding it below
+   about 700px costs more than it buys: the type has to fall to 26px to fit,
+   and a headline smaller than the sentence under it is not a headline. Under
+   that width it wraps instead and keeps its size. */
+@media (max-width: 700px) {
+  .hero__title {
+    white-space: normal;
+    font-size: clamp(38px, 12.2vw, 56px);
+    max-width: 15ch;
+  }
+}
+.hero__lede {
+  margin: var(--s-5) auto 0;
+  max-width: 54ch;
+  color: var(--ink-3);
+  font-size: clamp(var(--t-base), 2.2vw, var(--t-md));
+  line-height: 1.6;
+  letter-spacing: var(--track-tight);
+}
+@media (max-width: 700px) { .hero__lede { font-size: 16px; line-height: 1.45; } }
+.hero__form { margin: var(--s-7) auto 0; max-width: 920px; text-align: left; }
+.hero__form .check__note { text-align: center; }
+
+/* --- the plate --------------------------------------------------------
+   The live dissection, held in the one large card on the page. It starts
+   filled with a worked example rather than waiting for someone to type,
+   because the lesson it teaches is the most valuable thing here and most
+   people never type anything at all.
+
+   The card is a soft grey field with a white panel floating inside it. The
+   grey is doing one job: giving the white panel an edge without drawing one.
+*/
+.plate {
+  margin-top: var(--s-8);
+  padding: clamp(var(--s-5), 4vw, var(--s-7));
+  border-radius: var(--r-card);
+  border: var(--glass-edge);
+  background: var(--glass-sheen), linear-gradient(158deg, var(--card) 0%, var(--card-2) 100%);
+  box-shadow: var(--glass-bevel), 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.plate__panel {
+  padding: clamp(var(--s-4), 2.6vw, var(--s-6)) clamp(var(--s-5), 3.4vw, var(--s-7));
+  border-radius: var(--r-panel);
+  background: var(--sheet);
+  border: 1px solid transparent;
+  box-shadow: var(--lift);
+  text-align: left;
+  transition: background var(--fast), border-color var(--fast);
+}
+/* Picking a worked example below tints the whole card and the marked part
+   of its address to match: the same three colours the buttons themselves
+   use, so the box you are reading and the button you pressed agree.
+   "Unsure" is yellow rather than green - a colour-blind reader cannot tell
+   the danger (red) and unsure (green) buttons apart on hue alone - and uses
+   its own brighter --unsure token rather than the page's muted --warn, so it
+   reads as clearly yellow next to danger's red instead of as a paler shade
+   of the same warm colour. */
+.plate__panel[data-kind="danger"] {
+  background: color-mix(in srgb, var(--risk) 14%, var(--sheet));
+  border-color: var(--risk-edge);
+}
+.plate__panel[data-kind="danger"] .specimen__host { --specimen-accent: var(--risk); }
+.plate__panel[data-kind="unsure"] {
+  background: color-mix(in srgb, var(--unsure) 6%, var(--sheet));
+  border-color: var(--unsure-edge);
+}
+.plate__panel[data-kind="unsure"] .specimen__host { --specimen-accent: var(--unsure); }
+.plate__panel[data-kind="safe"] {
+  background: color-mix(in srgb, var(--ink-blue) 6%, var(--sheet));
+  border-color: var(--blue-edge);
+}
+.plate__panel[data-kind="safe"] .specimen__host { --specimen-accent: var(--ink-blue); }
+
+.demo__label {
+  margin-bottom: var(--s-4);
+  color: var(--ink-3);
+  font-size: 22.8px;
+  font-weight: 500;
+}
+/* Sized so the longest worked example still sets on one line at the width
+   this panel actually gets, and large enough to nearly fill that width. An
+   orphaned "/login" on a second line reads as a break in the address rather
+   than as the end of one. */
+.plate .specimen { font-size: clamp(17.1px, 2.8vw, 31px); }
+.plate .specimen__note { margin-top: 1.4em; font-size: 22.8px; line-height: 1.3; }
+
+/* Three worked examples. Between them they hold every trick worth knowing,
+   and one honest control — so someone can learn the whole lesson without
+   having a suspicious link of their own to hand. */
+.tryrow { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-6); }
+.try {
+  min-height: 32px; padding: 0 13px;
+  border: 1px solid var(--edge-ctl); border-radius: var(--r-ctl);
+  background: color-mix(in srgb, var(--ink-blue) 5%, var(--sheet) 80%);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: var(--ink-2);
+  font-size: 19.4px; font-weight: 500; letter-spacing: var(--track-tight);
+  cursor: pointer;
+  transition: border-color var(--fast), color var(--fast), background var(--fast);
+}
+.try[aria-pressed="true"] {
+  border-color: var(--check-go-accent);
+}
+.try[data-kind="danger"][aria-pressed="true"] { border-color: var(--risk); color: var(--risk); }
+.try[data-kind="unsure"][aria-pressed="true"] { border-color: var(--unsure); color: var(--unsure); }
+.try[data-kind="safe"][aria-pressed="true"]   { border-color: var(--ink-blue); color: var(--ink-blue); }
+
+/* ===========================================================================
+   Sections
+   =========================================================================== */
+
+.band { padding-block: var(--s-9); }
+
+.band__head { max-width: 34ch; }
+/* Wide enough that a short section title sets on one line and its sentence
+   underneath breaks somewhere it was going to break anyway. A centred column
+   measured in ch off the body size is far too narrow for a 44px heading. */
+.band__head.center { text-align: center; max-width: 44rem; margin-inline: auto; }
+
+.band__title {
+  font-size: clamp(var(--t-xl), 4.6vw, var(--t-2xl));
+  font-weight: 600;
+  letter-spacing: var(--track-display);
+  line-height: 1.08;
+}
+.band__title--sm { font-size: var(--t-lg); }
+/* Matches .closer__title's size/weight/tracking so the two headline
+   moments on the page read as the same voice. */
+.band__title--match-closer {
+  font-size: calc(clamp(var(--t-sm), 4.3vw, 60px) - 2px);
+  font-weight: 500;
+  letter-spacing: calc(var(--track-display) + 1px);
+  white-space: nowrap;
+}
+/* balance, not pretty: `pretty` only rescues a single-word last line, and
+   what these two-line sentences kept producing was a two-word one. Balancing
+   splits them evenly instead. */
+.band__lede {
+  margin-top: var(--s-4);
+  color: var(--ink-3);
+  font-size: var(--t-base);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+.band__head.center .band__lede { max-width: 46ch; margin-inline: auto; }
+
+/* ===========================================================================
+   Shared page furniture
+
+   Used by the landing page and by every result and scanning view, so that a
+   heading, a status word or a text button is the same object wherever it
+   appears. Anything defined here is layout-neutral: it carries type and
+   colour only, and never decides its own width.
+   =========================================================================== */
+
+.section-heading { max-width: 44rem; }
+.section-heading h2 {
+  font-size: clamp(var(--t-xl), 4.6vw, var(--t-2xl));
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: var(--track-display);
+}
+.section-heading p {
+  margin-top: var(--s-4);
+  color: var(--ink-3);
+  font-size: var(--t-base);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+/* A short caps label for a state — "Check in progress", "Looks dangerous".
+   It sits above a title and is the only place a verdict word is set small. */
+.status-label {
+  display: inline-block;
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* A link that reads as an action rather than as prose. Underlined on hover
+   only, so a row of them does not stripe the page. */
+.text-action {
+  color: var(--ink-blue);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+@media (hover: hover) { .text-action:hover { color: var(--ink-blue-hi); text-decoration: underline; } }
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+/* The quiet second line under a value: a unit, a caveat, a source name. */
+/* The line above a result opened from history: when it was checked, and the
+   way to a fresh one. */
+.history-note {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem;
+  margin: 1rem 0 0; padding: 0.75rem 1rem;
+}
+.history-note .btn { margin-left: auto; }
+
+.row-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+
+.plain-list { display: grid; gap: var(--s-2); margin-top: var(--s-3); }
+.plain-list li {
+  padding-left: var(--s-4);
+  position: relative;
+  font-size: var(--t-sm);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.plain-list li::before {
+  content: "";
+  position: absolute; left: 0; top: .62em;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--edge-ctl);
+}
+
+/* An address, a hash, a returned string: set in the face that keeps rn from
+   becoming m, and allowed to break anywhere so a 300-character URL cannot
+   push the page sideways. */
+.raw-value {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--t-xs);
+  line-height: 1.6;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* ===========================================================================
+   The glass panel — the one container in the product
+
+   Everything that holds information sits in one of these: the verdict, the
+   evidence, the progress of a running check. It is a single surface with a
+   lit edge and a shallow return beneath it. It is deliberately never nested
+   inside another one; a panel within a panel loses the material entirely and
+   reads as a stack of boxes.
+   =========================================================================== */
+
+.glass-panel {
+  border-radius: var(--r-card);
+  border: var(--glass-edge);
+  background: var(--glass-sheen),
+              linear-gradient(158deg, var(--card) 0%, var(--card-2) 100%);
+  box-shadow: var(--glass-bevel),
+              0 1px 2px rgba(9, 11, 20, .04),
+              0 12px 28px -14px rgba(9, 11, 20, .16);
+}
+
+/* ===========================================================================
+   Feature cards — six, in one set
+
+   The six illustrations are drawn from a single vocabulary: one diagram per
+   card, the same drawing area, the same two type sizes, one blue accent used
+   only where it explains something. Their outer frames match because their
+   contents are built to the same measure, not because a height was forced
+   over six unrelated pictures.
+
+   The description under each is held to four lines at desktop and mobile
+   reading sizes, so the row of cards has one baseline rather than six.
+   =========================================================================== */
+
+.how-section .section-heading { max-width: none; text-align: center; margin-inline: auto; }
+.how-section .section-heading p { max-width: 46ch; margin-inline: auto; }
+.how-section .section-heading h2 {
+  font-size: calc(clamp(var(--t-sm), 4.3vw, 60px) - 2px);
+  font-weight: 500;
+  letter-spacing: calc(var(--track-display) + 1px);
+  white-space: nowrap;
+}
+
+.feature-grid {
+  margin-top: var(--s-8);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: var(--s-6);
+  row-gap: var(--s-7);
+  grid-auto-rows: 1fr;
+}
+
+.feature-card { display: flex; flex-direction: column; }
+
+.feature-art {
+  position: relative;
+  /* The drawings size themselves off the card's real width rather than a
+     guess about it, so the set still holds together at a browser width the
+     grid was not designed around. */
+  container-type: inline-size;
+  min-height: 272px;
+  display: grid;
+  place-items: center;
+  padding: var(--s-7) var(--s-5) var(--s-5);
+  border-radius: var(--r-card);
+  border: var(--glass-edge);
+  background: var(--glass-sheen),
+              linear-gradient(158deg, var(--card) 0%, var(--card-2) 100%);
+  /* A restrained return rather than the heavy drop the cards used to carry:
+     enough to lift the pane off the paper, not enough to make six of them
+     read as bulky. */
+  box-shadow: var(--glass-bevel),
+              0 1px 2px rgba(9, 11, 20, .04),
+              0 12px 28px -14px rgba(9, 11, 20, .16);
+  overflow: hidden;
+}
+
+/* Every drawing says what it is. None of them is a real check, and a made-up
+   address that is not labelled as one is the exact confusion this tool
+   exists to remove. */
+.illustration-label {
+  position: absolute;
+  top: var(--s-4);
+  left: var(--s-5);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.feature-copy { margin-top: var(--s-5); width: 100%; }
+.feature-copy h3 {
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: var(--track-tight);
+}
+.feature-copy p {
+  max-inline-size: none;
+  margin-top: 0;
+  font-size: 19px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  /* Four lines, reserved. A card whose sentence runs short keeps the same
+     height as the one whose sentence fills the box; a reader at a larger
+     text size gets a taller box rather than clipped words. */
+  min-height: calc(3 * 1.4 * 19px);
+}
+.feature-copy p b { color: var(--ink); font-weight: 650; }
+
+/* --- the drawings --------------------------------------------------------
+   One measure, one pair of type sizes, one accent. `--dw` is the width every
+   diagram is built against, so the six occupy the same area inside frames of
+   the same size.
+*/
+.drawing {
+  --dw: 280px;
+  width: 100%;
+  max-width: var(--dw);
+  margin-inline: auto;
+}
+.drawing-caption {
+  margin-top: var(--s-4);
+  font-size: var(--t-2xs);
+  line-height: 1.55;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+/* The row that carries a label and its value. Four of the six drawings are
+   built out of it, which is most of what makes them read as one set. */
+.diagram-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: 7px 0;
+  border-top: 1px solid var(--rule-2);
+}
+.diagram-row > span {
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.diagram-row > b,
+.diagram-row > strong {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--ink);
+  text-align: right;
+}
+
+/* 1 — the address, taken apart. The registered domain is the only part set
+   solid; everything around it is the grey a reader is being taught to
+   discount. */
+.drawing-address { text-align: center; }
+.address-fragment,
+.domain-fragment,
+.path-fragment {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--t-xs);
+  line-height: 1.7;
+  display: inline;
+  /* The address may wrap between its parts but never inside one. A domain
+     broken across two lines is the misreading this card is drawn to correct. */
+  white-space: nowrap;
+}
+.address-fragment, .path-fragment { color: var(--ink-3); }
+.domain-fragment {
+  color: var(--risk);
+  font-weight: 600;
+  padding: 1px 3px;
+  border-radius: var(--r-mark);
+  background: color-mix(in srgb, var(--risk) 22%, transparent);
+  box-shadow: inset 0 -2px 0 var(--risk);
+}
+.annotation {
+  margin-top: var(--s-3);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  color: var(--ink-blue-hi);
+}
+.annotation-line {
+  display: block;
+  width: 1px;
+  height: 14px;
+  margin: 0 auto 4px;
+  background: var(--ink-blue);
+  opacity: .5;
+}
+
+/* 2 — where the link goes. Same-sized rows down a single thread, with only
+   the last stop marked. */
+.drawing-route { display: grid; }
+.route-stop {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: var(--s-3);
+  align-items: start;
+  padding-bottom: var(--s-4);
+}
+.route-stop--last { padding-bottom: 0; }
+.route-stop:not(.route-stop--last)::before {
+  content: "";
+  position: absolute;
+  left: 4px; top: 14px; bottom: 2px;
+  width: 1px;
+  background: var(--rule-2);
+}
+.route-dot {
+  width: 9px; height: 9px;
+  margin-top: 5px;
+  border-radius: 50%;
+  border: 1.5px solid var(--edge-ctl);
+  background: var(--sheet);
+}
+.route-stop--last .route-dot { border-color: var(--ink-blue); background: var(--ink-blue); }
+.route-stop small {
+  display: block;
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+}
+.route-stop b {
+  display: block;
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.route-stop--last b { color: var(--ink-blue-hi); font-weight: 600; }
+
+/* 3 — what the page asks for. An excerpt, not a browser: the chrome around a
+   page explains nothing about the page. */
+.drawing-page { display: grid; gap: var(--s-3); }
+.page-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--rule-2);
+}
+.page-line b { font-size: var(--t-sm); font-weight: 600; color: var(--ink); }
+.sample-site-icon {
+  display: grid;
+  place-items: center;
+  width: 20px; height: 20px;
+  border-radius: var(--r-mark);
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.sample-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 8px 11px;
+  border: 1px solid var(--ink-blue);
+  border-radius: var(--r-ctl);
+  background: var(--sheet);
+}
+.sample-field > span:first-child { font-size: var(--t-2xs); color: var(--ink-3); }
+.password-dots { letter-spacing: .16em; color: var(--ink); font-size: var(--t-xs); }
+.page-destination {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+}
+.page-destination small { font-size: var(--t-2xs); color: var(--ink-3); }
+.page-destination b {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* 4 — the record behind a domain. A registration timeline, then the two
+   other lookups, built from the shared row. */
+.drawing-history { display: grid; }
+.history-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  height: 10px;
+}
+.history-line::before {
+  content: "";
+  position: absolute;
+  left: 16%; right: 16%; top: 50%;
+  height: 1px;
+  background: var(--rule-2);
+}
+.history-line span {
+  position: relative;
+  justify-self: center;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--edge-ctl);
+}
+.history-line span:last-child { background: var(--ink-blue); }
+.history-labels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 6px 0 var(--s-4);
+}
+.history-labels span {
+  text-align: center;
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+}
+
+/* 5 — two readings of the same evidence, and the one result they produce. */
+.drawing-decision { display: grid; }
+.decision-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: 9px 12px;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-ctl);
+  background: var(--sheet);
+}
+.decision-line + .decision-line { margin-top: var(--s-2); }
+.decision-line b { font-size: var(--t-xs); font-weight: 600; color: var(--ink); }
+.decision-line span { font-size: var(--t-2xs); color: var(--ink-3); }
+/* The two readings meeting: a stem down from each, joined into one. */
+.decision-join {
+  position: relative;
+  height: 20px;
+  margin: 0 auto;
+  width: 100%;
+}
+.decision-join::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 1px;
+  background: var(--rule-2);
+}
+/* The conclusion is stacked and centred rather than set as another
+   label-and-value row, so the shape itself says the two readings above have
+   resolved into one thing. */
+.decision-outcome {
+  padding: 10px 12px;
+  border: 1px solid var(--blue-edge);
+  border-radius: var(--r-ctl);
+  background: var(--blue-wash);
+  text-align: center;
+}
+.decision-outcome b {
+  display: block;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--ink-blue-hi);
+}
+.decision-outcome span {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+}
+
+/* 6 — the boundary the check runs inside, and what it does not do. */
+.drawing-contained { display: grid; }
+.container-input {
+  justify-self: center;
+  padding: 6px 14px;
+  border: 1px dashed var(--edge-ctl);
+  border-radius: var(--r-pill);
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+}
+.container-connector {
+  width: 1px;
+  height: 18px;
+  margin-inline: auto;
+  background: var(--rule-2);
+}
+.container-boundary {
+  padding: 10px 14px 4px;
+  border: 1.5px solid var(--ink-blue);
+  border-radius: var(--r-panel);
+  background: color-mix(in srgb, var(--blue-wash) 70%, transparent);
+}
+.container-boundary > b {
+  display: block;
+  margin-bottom: var(--s-2);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--ink-blue-hi);
+}
+.container-boundary .diagram-row { border-top-color: var(--blue-edge); }
+
+/* ===========================================================================
+   Frequently asked questions
+
+   One column of rows separated by hairlines. The question is the row; the
+   answer opens underneath it into the left two-thirds, because an answer set
+   the full width of the page is a paragraph nobody finishes.
+   =========================================================================== */
+
+/* Medium weight, not a display weight — the title reads as a label for the
+   list below it rather than as its own heavy headline. */
+.faq__title { font-weight: 500; letter-spacing: calc(-0.045em + 1px); }
+
+.faq {
+  /* The gap between the title and the first row's divider — its own margin
+     rather than the title's, so it reads as space belonging to the list. */
+  margin-top: 56px;
+}
+
+.qa {
+  border-top: 1px solid color-mix(in srgb, var(--rule) 95%, transparent);
+  /* Open and close share one duration, and the chevron turns on the same clock
+     as the answer, so the row reads as a single movement. Read by the script
+     below too, so the timing is stated once. */
+  --qa-open: 320ms;
+}
+/* No rule capping the top of the first row or the bottom of the last one —
+   only the hairlines between questions, so the list reads as one block
+   bounded by space rather than boxed in on every side. */
+.qa:first-child { border-top: none; }
+
+.qa > summary {
+  display: flex; align-items: center; gap: var(--s-5);
+  padding: var(--s-3) 0;
+  cursor: pointer; list-style: none;
+  font-size: 26px; font-weight: 500;
+  letter-spacing: var(--track-display);
+  color: var(--ink);
+  transition: color var(--fast);
+}
+.qa > summary::-webkit-details-marker { display: none; }
+/* Hover moves the chevron and nothing else. Recolouring the question itself
+   made every row the pointer crossed on the way down the page flash blue,
+   which reads as six links rather than as one list. */
+
+/* The chevron is drawn from two borders rather than shipped as an icon: it has
+   to rotate about its own centre, and a rotating glyph never quite does. */
+.qa__chev {
+  flex: none; margin-left: auto;
+  width: 10px; height: 10px;
+  border-right: 1.6px solid var(--ink-3);
+  border-bottom: 1.6px solid var(--ink-3);
+  transform: translateY(-3px) rotate(45deg);
+  transition: transform var(--qa-open) var(--ease), border-color var(--fast);
+}
+.qa[open] > summary .qa__chev { transform: translateY(1px) rotate(-135deg); }
+/* [open] stays set for the length of the closing slide, so the chevron needs
+   telling separately or it would turn back only once the row had gone. */
+.qa[open].qa--shutting > summary .qa__chev { transform: translateY(-3px) rotate(45deg); }
+@media (hover: hover) { .qa > summary:hover .qa__chev { border-color: var(--ink); } }
+.qa[open]:not(.qa--shutting) > summary .qa__chev { border-color: var(--ink); }
+
+.qa__body {
+  max-width: 62ch;
+  /* Extra room above the answer, on top of the question row's own bottom
+     padding, so the answer clearly starts below the question rather than
+     butting up against it. */
+  padding-top: 6px;
+  padding-bottom: var(--s-4);
+  color: color-mix(in srgb, var(--ink-3) 80%, var(--ink-2) 20%);
+  font-size: 19px;
+  line-height: 1.4;
+}
+.qa__body > p + p { margin-top: var(--s-4); }
+.qa__body b { color: var(--ink); font-weight: 600; }
+.limits-list { margin: var(--s-2) 0 0; }
+.limits-list__row {
+  display: grid;
+  grid-template-columns: minmax(0, 45%) minmax(0, 55%);
+  align-items: baseline;
+  min-height: 40px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--rule-2);
+}
+.limits-list__row:last-child { border-bottom: 0; }
+.limits-list dt { color: var(--ink-3); font-size: 19px; line-height: 1.25; }
+.limits-list dd { margin: 0; color: var(--ink); font-size: 20px; line-height: 1.2; }
+@media (max-width: 520px) {
+  .limits-list__row { grid-template-columns: minmax(0, 55%) minmax(0, 45%); }
+  .limits-list dt { font-size: 15px; }
+  .limits-list dd { font-size: 15px; overflow-wrap: anywhere; }
+}
+/* .kv is shared with the technical-record panels elsewhere, where its own
+   compact --t-xs is the right call; here it sits inside an answer, so it
+   should read at the same size as the rest of that answer's text instead. */
+
+/* The answer does not arrive; it was always there, behind the question below
+   it. This is the clip: the answer sits still at full opacity while the box
+   around it is opened and closed by the script, and the rest of the list slides
+   down off the top of it. Nothing fades and nothing moves sideways. The only
+   thing that changes is how much of the answer the list is standing on. */
+.qa__reveal { overflow: hidden; }
+
+/* ===========================================================================
+   The closing call to action
+   =========================================================================== */
+
+.closer {
+  /* No top margin: the section above already ends on a full band of space,
+     and adding another here left a gap you could park a car in. */
+  margin-block: 0 var(--s-9);
+  padding: clamp(var(--s-7), 7vw, var(--s-9)) var(--s-6);
+  border-radius: var(--r-card);
+  border: var(--glass-edge);
+  /* The glass from the section dock on the personal site (see --glass-* in
+     tokens.css), layered over this box's own --card/--card-2 tint rather
+     than the dark one the dock uses, so it reads as this page's surface. */
+  background: var(--glass-sheen), linear-gradient(158deg, var(--card) 0%, var(--card-2) 100%);
+  box-shadow: var(--glass-bevel), 0 10px 30px rgba(0, 0, 0, 0.18);
+  text-align: center;
+}
+.closer__title {
+  /* vw-only floor (no fixed minimum) so the line keeps fitting on one row
+     down to narrow phone widths instead of overflowing into horizontal
+     scroll once the fixed floor of a normal clamp would take over. */
+  font-size: calc(clamp(var(--t-sm), 4.3vw, 60px) - 2px);
+  font-weight: 500;
+  letter-spacing: calc(var(--track-display) + 1px);
+  white-space: nowrap;
+  margin-inline: auto;
+}
+.closer__lede {
+  margin: var(--s-4) auto 0;
+  max-width: 34rem;
+  color: var(--ink-3); font-size: var(--t-md); line-height: 1.5;
+  text-wrap: balance;
+}
+.closer .cta {
+  margin-top: var(--s-6); min-height: 60px; padding: 0 34px; font-size: var(--t-lg);
+  background: var(--glass-sheen), var(--check-go-accent);
+  box-shadow: var(--glass-bevel);
+}
+.closer .cta svg { width: 19px; height: 19px; }
+@media (hover: hover) {
+  .closer .cta:hover {
+    background: var(--glass-sheen), color-mix(in srgb, var(--check-go-accent) 92%, black);
+  }
+}
+
+/* ===========================================================================
+   The result page
+
+   Three passes down one column: the answer, the reasons behind it, then the
+   record. The proportions do the teaching — the verdict panel is the largest
+   object on the page, and every technical section is a closed row until
+   somebody asks for it.
+
+   The verdict no longer floods the page in a colour. A safe result and a
+   dangerous one are the same glass panel with the same measure; what changes
+   is the status word, one accent rule, and a faint tint at the top. Colour
+   that repaints the whole page turns out to be worse at conveying a verdict
+   than the sentence does, and it makes the result look like a different
+   website from the one the reader typed into.
+   =========================================================================== */
+
+.result-page {
+  padding-block: var(--s-7) var(--s-9);
+  display: grid;
+  gap: var(--s-8);
+  /* .wrap's gutter is padding, so it has to be added on: a bare 1080px here
+     yields a column two gutters narrower than the number says. */
+  max-width: calc(1080px + 2 * var(--gutter));
+}
+
+/* The line above the verdict: where you are, and the way out. */
+.page-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--rule);
+}
+.page-heading > span {
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.result-section { display: grid; gap: var(--s-5); }
+.result-section .section-heading h2 {
+  font-size: var(--t-xl);
+  font-weight: 600;
+}
+.result-section .section-heading h2:is(#findings-title, #address-title, #technical-title) {
+  letter-spacing: calc(var(--track-display) + 1px);
+}
+.result-section .section-heading p {
+  margin-top: var(--s-2);
+  font-size: var(--t-sm);
+  max-width: 62ch;
+}
+
+/* --- the verdict panel ---------------------------------------------------- */
+
+.result-summary {
+  position: relative;
+  padding: var(--s-6) var(--s-7) var(--s-6);
+  display: grid;
+  gap: var(--s-4);
+  overflow: hidden;
+}
+.result-summary.is-safe {
+  border-color: var(--safe-edge);
+  background: var(--glass-sheen),
+              linear-gradient(158deg, var(--result-safe-a) 0%, var(--result-safe-b) 100%);
+}
+.result-summary.is-risk {
+  border-color: var(--risk-edge);
+  background: var(--glass-sheen),
+              linear-gradient(158deg, var(--result-risk-a) 0%, var(--result-risk-b) 100%);
+}
+.result-summary.is-unsure {
+  border-color: var(--warn-edge);
+  background: var(--glass-sheen),
+              linear-gradient(158deg, var(--result-unsure-a) 0%, var(--result-unsure-b) 100%);
+}
+/* One rule across the top, in the verdict's own colour. It is the only place
+   the state is carried by colour alone, and it is never the only place the
+   state is carried at all — the word above the domain always says it too. */
+.result-summary::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--edge-ctl);
+}
+.result-summary.is-risk::before   { background: var(--risk); }
+.result-summary.is-safe::before   { background: var(--safe); }
+.result-summary.is-unsure::before { background: var(--unsure); }
+
+.summary-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+}
+.is-risk   .summary-meta .status-label { color: var(--risk); }
+.is-safe   .summary-meta .status-label { color: var(--safe); }
+.is-unsure .summary-meta .status-label { color: var(--unsure); }
+
+/* The domain, not the score, is the thing a reader carries away. */
+.summary-domain {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.result-summary h1 {
+  font-size: clamp(var(--t-lg), 3.6vw, var(--t-2xl));
+  font-weight: 600;
+  letter-spacing: var(--track-display);
+  line-height: 1.06;
+  max-width: 20ch;
+}
+.summary-reason {
+  font-size: var(--t-md);
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 56ch;
+}
+.summary-context {
+  font-size: var(--t-sm);
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 60ch;
+}
+
+/* Advice is a panel of its own inside the summary rather than another
+   paragraph, because it is the only part of this page that asks the reader to
+   go and do something. */
+.summary-advice {
+  margin-top: var(--s-2);
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-panel);
+  border: 1px solid var(--blue-edge);
+  background: var(--blue-wash);
+}
+.summary-advice h2 {
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--ink-blue-hi);
+}
+.summary-advice p {
+  margin-top: var(--s-2);
+  font-size: var(--t-base);
+  line-height: 1.55;
+  color: var(--ink);
+  max-width: 60ch;
+}
+.result-summary.is-risk .summary-advice {
+  border-color: var(--risk-edge);
+  background: color-mix(in srgb, var(--result-risk-a) 78%, transparent);
+}
+.result-summary.is-risk .summary-advice h2 { color: var(--risk); }
+.result-summary.is-unsure .summary-advice {
+  border-color: var(--warn-edge);
+  background: color-mix(in srgb, var(--result-unsure-a) 78%, transparent);
+}
+.result-summary.is-unsure .summary-advice h2 { color: var(--warn); }
+
+/* Anything that weakens this result. Kept in the summary on purpose: a
+   caveat a reader has to open a disclosure to find is a caveat that does not
+   exist. */
+.summary-limit {
+  padding-left: var(--s-4);
+  border-left: 2px solid var(--warn-edge);
+  font-size: var(--t-sm);
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+/* The plain `a` blue clears the safe and unsure fields fine, but against the
+   risk gradient it measured 4.43:1 at the pale end and 3.33 at the deep
+   end — under the 4.5 a normal-size link needs. --ink-blue-hi (already used
+   as the hover colour everywhere else) reaches 6.3 and 4.74 there instead. */
+.result-summary.is-risk .summary-limit a { color: var(--ink-blue-hi); }
+
+.summary-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--rule);
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+.action-status {
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+.action-status:empty { display: none; }
+
+/* --- why this result ------------------------------------------------------ */
+
+.findings-panel { padding: var(--s-3) var(--s-6) var(--s-6); }
+.finding-group + .finding-group { margin-top: var(--s-6); }
+.finding-group h3 {
+  margin-bottom: var(--s-2);
+  padding-top: var(--s-4);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Tag, statement, and a way through to the evidence behind it. The middle
+   column takes the space so the tags stack into a readable column of their
+   own down the left. */
+.finding-row {
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
+  gap: var(--s-4);
+  align-items: start;
+  padding: var(--s-4) 0;
+  border-top: 1px solid var(--rule);
+}
+.finding-row > p {
+  font-size: var(--t-sm);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+/* The one state mark used everywhere on this page: findings, rules, and the
+   sign of a score contribution. Text, not a colour alone. */
+.finding-tag {
+  display: inline-block;
+  justify-self: start;
+  padding: 3px 8px;
+  border-radius: var(--r-mark);
+  border: 1px solid transparent;
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.finding-tag.bad     { color: var(--risk); background: color-mix(in srgb, var(--risk) 18%, transparent);  border-color: var(--risk-edge); }
+.finding-tag.good    { color: var(--safe); background: color-mix(in srgb, var(--safe) 9%, transparent);  border-color: var(--safe-edge); }
+.finding-tag.neutral { color: var(--warn); background: var(--warn-field); border-color: var(--warn-edge); }
+
+.panel-empty { font-size: var(--t-sm); color: var(--ink-3); padding-top: var(--s-4); }
+
+/* --- the address ---------------------------------------------------------- */
+
+.address-panel { padding: var(--s-6); display: grid; gap: var(--s-3); }
+.address-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+.address-heading:not(:first-child) { margin-top: var(--s-5); }
+.address-heading h3 {
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.address-panel .specimen,
+.scan-panel .specimen {
+  margin: 0;
+  font-size: clamp(var(--t-base), 2vw, var(--t-lg));
+}
+
+.redirect-list { display: grid; gap: var(--s-4); counter-reset: hop; margin: 0; padding: 0; }
+.redirect-list li {
+  padding: var(--s-4);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-ctl);
+  background: var(--sheet);
+}
+
+/* --- the technical record ------------------------------------------------- */
+
+/* One selected pill controls the record panel directly. */
+.record-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.record-nav [role="tab"] {
+  padding: 7px 14px;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-pill);
+  background: var(--sheet);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color var(--fast), color var(--fast), background var(--fast);
+}
+@media (hover: hover) { .record-nav [role="tab"]:hover { border-color: var(--ink-blue); color: var(--ink-blue-hi); } }
+.record-nav [aria-selected="true"],
+.record-nav [aria-selected="true"]:hover {
+  border-color: var(--ink-blue);
+  background: var(--ink-blue);
+  color: var(--on-blue);
+}
+
+.records-panel { padding: var(--s-2) var(--s-6); }
+
+/*  A disclosure for supporting details and single long values. Depth is carried by type
+    size, not by a new border on every level — nested boxes are what made the
+    old record read as a wall. */
+.record-fold > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-4) 0;
+  font-size: var(--t-sm);
+  font-weight: 550;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+}
+.record-fold,
+.value-fold {
+  /* Keep result disclosures on the FAQ accordion's single motion clock. */
+  --qa-open: 320ms;
+}
+.record-fold__reveal {
+  /* Match .qa__reveal: clip the body without resizing its grid or padding. */
+  overflow: hidden;
+}
+.record-fold > summary::-webkit-details-marker { display: none; }
+/* The chevron is drawn rather than typed, so it turns rather than swapping
+   for a different character. */
+.record-fold > summary::after {
+  content: "";
+  flex: none;
+  width: 8px; height: 8px;
+  margin-left: auto;
+  border-right: 1.6px solid var(--ink-3);
+  border-bottom: 1.6px solid var(--ink-3);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--qa-open) var(--ease);
+}
+.record-fold[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+.record-fold[open].record-fold--shutting > summary::after {
+  transform: rotate(45deg) translate(-2px, -2px);
+}
+@media (hover: hover) {
+  .record-fold > summary:hover { color: var(--ink-blue-hi); }
+  .record-fold > summary:hover::after { border-color: var(--ink-blue); }
+}
+
+.record-hint {
+  margin-left: auto;
+  font-size: var(--t-xs);
+  font-weight: 400;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.record-fold > summary > span:first-child { flex: 0 1 auto; }
+
+.fold-content { padding: 0 0 var(--s-5); display: grid; gap: var(--s-4); }
+.fold-content > p { font-size: var(--t-sm); line-height: 1.6; color: var(--ink-2); max-width: 68ch; }
+.fold-content > h3 {
+  margin-top: var(--s-3);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.record-panel-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  padding-block: var(--s-5);
+}
+.record-panel-heading h3 { font-size: var(--t-base); font-weight: 600; }
+.record-panel-heading .record-hint { margin-left: 0; white-space: normal; }
+.record-tab-panel:not([hidden]) ~ .record-tab-panel:not([hidden]) { border-top: 1px solid var(--rule-2); }
+
+/* A nested fold sets back off the section it lives in, so the eye can find
+   the level it is at without a box being drawn around it. */
+.fold-content .record-fold {
+  padding-left: var(--s-4);
+  border-left: 1px solid var(--rule);
+}
+.fold-content .record-fold > summary { font-size: var(--t-xs); font-weight: 550; }
+
+/* --- rules ---------------------------------------------------------------- */
+
+.rule-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: var(--s-4);
+  align-items: start;
+  padding: var(--s-2) 0;
+  border-top: 1px solid var(--rule);
+}
+.rule-row > p { font-size: var(--t-sm); line-height: 1.55; color: var(--ink-2); }
+
+/* --- the score ------------------------------------------------------------ */
+
+.model-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-5) var(--s-7);
+  padding: var(--s-5) 0 var(--s-2);
+}
+.model-figure { display: flex; align-items: baseline; gap: var(--s-2); flex-wrap: wrap; }
+.model-number {
+  font-size: var(--t-3xl);
+  font-weight: 600;
+  letter-spacing: var(--track-display);
+  line-height: 1;
+  color: var(--ink);
+}
+.model-of { font-size: var(--t-md); color: var(--ink-3); }
+.model-figure p { flex-basis: 100%; font-size: var(--t-xs); color: var(--ink-3); }
+.model-threshold { flex: 1 1 22ch; }
+.model-threshold h3 { font-size: var(--t-sm); font-weight: 600; color: var(--ink); }
+.model-threshold p { margin-top: 4px; font-size: var(--t-xs); line-height: 1.5; color: var(--ink-3); }
+
+/* One honest scale. The threshold is a line on it, the interval is a band
+   behind it, and the score is a single mark — no gradient, because a gradient
+   would imply the risk rises smoothly across a range the model does not
+   actually read that way. */
+.score-chart { display: grid; gap: var(--s-2); }
+.score-track {
+  position: relative;
+  height: 10px;
+  border-radius: var(--r-pill);
+  /* The track sits on a glass panel, not on paper, so a --paper-2 fill
+     disappears into it. This one is a tint of the ink instead, which keeps
+     its edge in both colour schemes. */
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  border: 1px solid var(--rule-2);
+}
+.score-band {
+  position: absolute;
+  top: 0; bottom: 0;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--ink-blue) 22%, transparent);
+}
+.score-threshold {
+  position: absolute;
+  top: -4px; bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink-3);
+}
+.score-point {
+  position: absolute;
+  top: 50%;
+  width: 14px; height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 2px solid var(--paper);
+  box-shadow: 0 1px 3px rgba(9, 11, 20, .3);
+}
+.is-risk .score-point, .result-summary.is-risk ~ * .score-point { background: var(--risk); }
+.score-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+}
+.score-note { font-size: var(--t-xs); line-height: 1.6; color: var(--ink-3); max-width: 68ch; }
+
+/* A contribution: what it means, what it was worth, and how that compares to
+   the others. The bar grows from the middle so direction is visible before
+   the number is read. */
+.contribution { padding: var(--s-2) 0; border-top: 1px solid var(--rule); }
+.contribution-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+.contribution-heading p { font-size: var(--t-sm); line-height: 1.5; color: var(--ink-2); }
+.contribution-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-top: 6px;
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+}
+.contribution-track {
+  position: relative;
+  flex: none;
+  width: 140px; height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--paper-2);
+}
+.contribution-track::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: -2px; bottom: -2px;
+  width: 1px;
+  background: var(--rule-2);
+}
+.contribution-track > span {
+  position: absolute;
+  top: 0; bottom: 0;
+  border-radius: var(--r-pill);
+}
+.contribution-track.is-bad  > span { left: 50%; background: var(--risk); }
+.contribution-track.is-good > span { right: 50%; background: var(--safe); }
+
+.feature-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.feature-names li {
+  padding: 3px 8px;
+  border-radius: var(--r-mark);
+  background: var(--paper-2);
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+}
+
+/* --- evidence sources ----------------------------------------------------- */
+
+.source-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+}
+.source-controls label {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+.source-controls select {
+  padding: 6px 10px;
+  border: 1px solid var(--edge-ctl);
+  border-radius: var(--r-ctl);
+  background: var(--sheet);
+  color: var(--ink);
+  font-size: var(--t-xs);
+}
+
+.source-record { border-top: 1px solid var(--rule); }
+.source-record > summary { padding-block: var(--s-2); }
+.source-title { display: flex; flex-direction: column; gap: 1px; }
+.source-title small {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--t-2xs);
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.source-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-left: auto;
+  font-size: var(--t-2xs);
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+/* Values in the technical index and source list share fixed reading columns.
+   This keeps counts, statuses, and timings on stable vertical axes. */
+@media (min-width: 721px) {
+  #observations > summary,
+  .source-record > summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 250px 12px;
+  }
+  #observations > summary::after,
+  .source-record > summary::after {
+    grid-column: 3;
+    justify-self: end;
+    margin-left: 0;
+  }
+  #observations > summary > .record-hint {
+    grid-column: 2;
+    justify-self: start;
+    margin-left: 0;
+  }
+  .source-record > summary > .source-meta {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: 142px 68px;
+    gap: var(--s-3);
+    margin-left: 0;
+  }
+  .source-meta .status-chip { justify-self: start; }
+  .source-meta .num { justify-self: start; }
+}
+/* The status is a word first. The colour behind it only confirms what the
+   word already said. */
+.status-chip {
+  padding: 3px 8px;
+  border-radius: var(--r-mark);
+  border: 1px solid var(--rule-2);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status-chip.s-ok      { color: var(--safe); background: var(--safe-field); border-color: var(--safe-edge); }
+.status-chip.s-failed  { color: var(--risk); background: color-mix(in srgb, var(--risk) 16%, transparent); border-color: var(--risk-edge); }
+.status-chip.s-timeout { color: var(--warn); background: var(--warn-field); border-color: var(--warn-edge); }
+.status-chip.s-skipped { color: var(--ink-3); background: var(--paper-2); }
+
+.value-fold > summary {
+  font-size: var(--t-2xs);
+  color: var(--ink-blue);
+  cursor: pointer;
+  padding: 2px 0;
+}
+.value-fold pre {
+  margin: var(--s-2) 0;
+  padding: var(--s-3);
+  max-height: 320px;
+  overflow: auto;
+  border-radius: var(--r-ctl);
+  background: var(--paper-2);
+  font-family: var(--font-mono);
+  font-size: var(--t-2xs);
+  line-height: 1.55;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* --- key and value -------------------------------------------------------- */
+
+.data-list { display: grid; gap: 0; margin: 0; }
+.data-list > div {
+  display: grid;
+  grid-template-columns: minmax(140px, 26%) 1fr;
+  gap: var(--s-4);
+  align-items: baseline;
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--rule);
+}
+.records-panel .data-list > div { padding: var(--s-2) 0; }
+.data-list dt {
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+.data-list dd {
+  margin: 0;
+  font-size: var(--t-xs);
+  line-height: 1.6;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* --- the panels below the record ------------------------------------------ */
+
+.help-panel, .feedback-panel { padding: 0 var(--s-6); }
+.help-panel > summary, .feedback-panel > summary {
+  padding-block: var(--s-5);
+  font-size: var(--t-base);
+  font-weight: 600;
+}
+.feedback-panel fieldset { border: 0; margin: 0; padding: 0; }
+.feedback-panel legend {
+  padding: 0 0 var(--s-3);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+/* ===========================================================================
+   Scanning
+
+   A check takes real seconds, and which source has come back is real
+   information — it is what tells a reader in advance which evidence the
+   result will be missing. So the progress is shown, but as one line and one
+   bar; the per-source list is underneath, for whoever wants it.
+   =========================================================================== */
+
+.scan-page {
+  padding-block: var(--s-7) var(--s-9);
+  display: grid;
+  gap: var(--s-5);
+  max-width: calc(1080px + 2 * var(--gutter));
+}
+.scan-panel { padding: var(--s-6) var(--s-7); display: grid; gap: var(--s-4); }
+.scan-panel h1 {
+  font-size: clamp(var(--t-lg), 3.4vw, var(--t-xl));
+  font-weight: 600;
+  letter-spacing: var(--track-display);
+}
+.scan-lede { font-size: var(--t-base); line-height: 1.55; color: var(--ink-2); max-width: 58ch; }
+.scan-panel .specimen { margin-block: var(--s-2); }
+
+.progress {
+  height: 6px;
+  border-radius: var(--r-pill);
+  /* Tinted from the ink, not from --paper-2: this bar sits on glass, where a
+     paper-coloured track is invisible and an empty bar looks like no bar. */
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+  overflow: hidden;
+}
+.progress__fill {
+  height: 100%;
+  width: 0;
+  border-radius: var(--r-pill);
+  background: var(--ink-blue);
+  transition: width var(--slow);
+}
+.progress-label { font-size: var(--t-sm); font-weight: 550; color: var(--ink); }
+.scan-current { font-size: var(--t-xs); color: var(--ink-3); }
+
+/* The shape of the answer, held open while it is being gathered, so the page
+   does not jump when the result arrives. */
+.result-skeleton { display: grid; gap: var(--s-3); padding-top: var(--s-3); }
+.result-skeleton span {
+  height: 12px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg,
+              color-mix(in srgb, var(--ink) 6%, transparent) 0%,
+              color-mix(in srgb, var(--ink) 12%, transparent) 50%,
+              color-mix(in srgb, var(--ink) 6%, transparent) 100%);
+  background-size: 200% 100%;
+  animation: skeleton 1.6s linear infinite;
+}
+.result-skeleton span:nth-child(1) { width: 46%; }
+.result-skeleton span:nth-child(2) { width: 72%; }
+.result-skeleton span:nth-child(3) { width: 58%; }
+@keyframes skeleton { to { background-position: -200% 0; } }
+
+.scan-assurance {
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--rule);
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+#scan-recovery { display: grid; gap: var(--s-4); }
+/* The service's own words about why it stopped, kept as it sent them: the
+   message carries shell commands whose whitespace matters. */
+#recovery-detail {
+  margin: 0;
+  padding: var(--s-4);
+  border-radius: var(--r-ctl);
+  background: var(--paper-2);
+  font-family: var(--font-mono);
+  font-size: var(--t-2xs);
+  line-height: 1.6;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#recovery-message {
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-panel);
+  border: 1px solid var(--ink-3);
+  background: color-mix(in srgb, var(--ink-3) 10%, var(--paper-2));
+  font-size: var(--t-sm);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+/* Every panel on this page is inset the same amount, disclosure or not. */
+.scan-page > .record-fold { padding: 0 var(--s-6); }
+.scan-page > .record-fold > summary { padding-block: var(--s-4); font-size: var(--t-sm); }
+.scan-steps { display: grid; }
+.scan-step {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--rule);
+  font-size: var(--t-xs);
+}
+.scan-step > span:first-child { color: var(--ink-2); }
+.step-detail { color: var(--ink-3); text-align: right; }
+.scan-step[data-status="ok"] .step-detail      { color: var(--safe); }
+.scan-step[data-status="failed"] .step-detail  { color: var(--risk); }
+.scan-step[data-status="timeout"] .step-detail { color: var(--warn); }
+
+/* ===========================================================================
+   History tray — a slide-over, because history is not the job
+   =========================================================================== */
+
+.scrim {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(9, 11, 20, .34);
+  backdrop-filter: blur(2px);
+  opacity: 0; transition: opacity var(--slow);
+}
+body.tray-open .scrim { opacity: 1; }
+.scrim[hidden] { display: none; }
+
+.tray {
+  position: fixed; z-index: 80; top: 0; right: 0; bottom: 0;
+  width: min(400px, 92vw);
+  display: flex; flex-direction: column;
+  background: var(--sheet);
+  border-left: 1px solid var(--rule);
+  box-shadow: var(--lift-over);
+  transform: translateX(101%);
+  transition: transform var(--slow);
+  visibility: hidden;
+}
+.tray.is-open { transform: none; visibility: visible; }
+
+.tray__head {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-5) var(--s-5) var(--s-4);
+  border-bottom: 1px solid var(--rule);
+}
+.tray__head h2 { font-size: var(--t-md); font-weight: 600; }
+.tray__body { flex: 1; overflow-y: auto; padding: var(--s-3) var(--s-3) var(--s-6); }
+.tray__empty { padding: var(--s-6) var(--s-4); color: var(--ink-2); font-size: var(--t-sm); max-width: 36ch; }
+
+.iconbtn {
+  display: grid; place-items: center;
+  width: 44px; height: 44px; flex: none;
+  border: 0; border-radius: var(--r-ctl);
+  background: none; color: var(--ink-3);
+  cursor: pointer;
+  transition: background var(--fast), color var(--fast);
+}
+@media (hover: hover) { .iconbtn:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); } }
+.iconbtn svg { width: 17px; height: 17px; }
+@media (hover: hover) { .iconbtn--danger:hover { color: var(--risk); background: color-mix(in srgb, var(--risk) 10%, transparent); } }
+
+.run {
+  position: relative;
+  display: flex; align-items: center;
+  border-radius: var(--r-ctl);
+  transition: background var(--fast);
+}
+@media (hover: hover) { .run:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); } }
+
+.run__open {
+  flex: 1; min-width: 0;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--s-3);
+  padding: 11px var(--s-3);
+  color: inherit; text-decoration: none;
+}
+.run__main { min-width: 0; }
+/* Secondary now, and quiet enough to read as one. */
+.run__score {
+  font-size: var(--t-xs); font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--track-tight);
+  color: var(--ink-3);
+}
+.run__name {
+  display: block;
+  font-size: var(--t-sm); font-weight: 550;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.run__when {
+  display: flex; flex-wrap: wrap; gap: 2px var(--s-2);
+  color: var(--ink-3); font-size: var(--t-2xs);
+}
+.run__state { font-weight: 600; }
+.run__state.is-safe { color: var(--safe); }
+.run__state.is-risk { color: var(--risk); }
+.run__state.is-unsure { color: var(--warn); }
+
+.run__tools { display: flex; gap: 2px; padding-right: 6px; opacity: 0; transition: opacity var(--fast); }
+.run:hover .run__tools, .run:focus-within .run__tools { opacity: 1; }
+@media (hover: none) { .run__tools { opacity: 1; } }
+
+.run__rename {
+  flex: 1; margin: 6px var(--s-3);
+  padding: 8px 10px;
+  border: 1px solid var(--ink-blue); border-radius: var(--r-ctl);
+  background: var(--paper);
+  font-size: var(--t-sm);
+}
+
+.run__undo { display: none; }
+.run.is-pending .run__open, .run.is-pending .run__tools { display: none; }
+.run.is-pending .run__undo {
+  display: flex; align-items: center; gap: var(--s-3);
+  width: 100%; padding: 13px var(--s-3);
+  color: var(--ink-3); font-size: var(--t-sm);
+}
+.run.is-going { opacity: .4; pointer-events: none; }
+.run__timer { margin-left: auto; color: var(--ink-3); font-size: var(--t-2xs); font-variant-numeric: tabular-nums; }
+
+.linkbtn {
+  border: 0; background: none; padding: 0;
+  color: var(--ink-blue); font-size: var(--t-sm); font-weight: 600;
+  cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+}
+
+.tray__foot {
+  padding: var(--s-4) var(--s-5);
+  border-top: 1px solid var(--rule);
+  color: var(--ink-3); font-size: var(--t-2xs);
+  display: grid; gap: 6px;
+}
+.tray__foot span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===========================================================================
+   Buttons, notices, forms
+   =========================================================================== */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 20px;
+  border: 1px solid transparent; border-radius: var(--r-ctl);
+  font-size: var(--t-sm); font-weight: 600; letter-spacing: var(--track-tight);
+  text-decoration: none; cursor: pointer;
+  transition: background var(--fast), border-color var(--fast), color var(--fast), box-shadow var(--fast);
+}
+.btn--primary { background: var(--ink-blue); color: var(--on-blue); border: var(--glass-edge); box-shadow: var(--glass-bevel); }
+@media (hover: hover) { .btn--primary:hover { background: color-mix(in srgb, var(--ink-blue) 92%, black); color: var(--on-blue); box-shadow: var(--glass-bevel); } }
+.btn--plain { background: var(--sheet); border-color: var(--edge-ctl); color: var(--ink); }
+@media (hover: hover) { .btn--plain:hover { border-color: var(--ink); color: var(--ink); } }
+.btn--ghost { background: none; color: var(--ink-3); text-decoration: underline; text-underline-offset: 3px; }
+@media (hover: hover) { .btn--ghost:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); } }
+
+.btnrow { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+.btnrow--stack { flex-direction: column; align-items: stretch; }
+
+.notice {
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-panel);
+  background: var(--warn-field);
+  border: 1px solid var(--warn-edge);
+}
+.notice h2 { font-size: var(--t-sm); font-weight: 600; color: var(--warn); letter-spacing: calc(var(--track-display) + 1px); }
+.notice p { margin-top: 6px; font-size: var(--t-xs); color: var(--ink-2); max-width: var(--measure); }
+.notice--good { background: var(--safe-field); border-color: var(--safe-edge); }
+.notice--good h2 { color: var(--safe); }
+
+.choices { display: grid; gap: var(--s-2); margin-bottom: var(--s-5); }
+.choice {
+  display: grid; grid-template-columns: 20px 1fr; gap: var(--s-3);
+  align-items: start;
+  padding: var(--s-4);
+  border: 1px solid var(--edge-ctl); border-radius: var(--r-ctl);
+  background: var(--sheet);
+  cursor: pointer;
+  transition: border-color var(--fast), background var(--fast);
+}
+@media (hover: hover) { .choice:hover { border-color: var(--ink); } }
+.choice:has(input:checked) { border-color: var(--ink-blue); background: var(--blue-wash); }
+.choice input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--ink-blue); }
+.choice__label { display: block; font-size: var(--t-sm); font-weight: 550; }
+.choice__hint { display: block; margin-top: 3px; color: var(--ink-3); font-size: var(--t-xs); }
+
+.field {
+  width: 100%; max-width: 560px;
+  padding: 11px 13px;
+  border: 1px solid var(--edge-ctl); border-radius: var(--r-ctl);
+  background: var(--sheet); color: var(--ink);
+  font-size: var(--t-sm);
+  resize: vertical;
+}
+.field:focus-visible { border-color: var(--ink-blue); outline-offset: 0; }
+.label { display: block; margin-bottom: 6px; font-size: var(--t-sm); font-weight: 550; }
+
+/* ===========================================================================
+   Corrections queue
+   =========================================================================== */
+
+.report {
+  display: grid; grid-template-columns: 22px 1fr; gap: var(--s-3);
+  padding: var(--s-5) 0;
+  border-bottom: 1px solid var(--rule);
+}
+.report__mark { display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; }
+.report__mark svg { width: 13px; height: 13px; stroke-width: 2.6; }
+.report__mark.miss { background: var(--risk-field); color: var(--risk-on); }
+.report__mark.over { background: var(--warn-field); color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn-edge); }
+.report__mark.data { background: var(--paper-2); color: var(--ink-3); }
+.report__title { font-size: var(--t-sm); font-weight: 600; }
+.report__url {
+  margin-top: 3px;
+  font-family: var(--font-mono); font-size: var(--t-xs); color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.report__note { margin-top: var(--s-3); font-size: var(--t-sm); color: var(--ink-2); max-width: var(--measure); }
+
+.empty {
+  padding: var(--s-8) 0;
+  max-width: var(--measure);
+}
+.empty h2 { font-size: var(--t-lg); font-weight: 600; }
+.empty p { margin-top: var(--s-3); color: var(--ink-3); font-size: var(--t-sm); }
+.empty .btnrow { margin-top: var(--s-5); }
+
+/* The Corrections tray reuses the queue's own markup at a narrower width. */
+.tray__lede { padding: 0 var(--s-2) var(--s-4); color: var(--ink-2); font-size: var(--t-sm); }
+.tray__body .empty { padding: var(--s-4) var(--s-2); }
+.tray__body .fold { padding: 0 var(--s-2); }
+.tray-reports { padding: 0 var(--s-2); }
+.tray-reports .report:last-child { border-bottom: 0; }
+
+/* ===========================================================================
+   Narrow screens
+
+   Every multi-column row on a result — a finding, a rule, a key and its value
+   — is a column pair only because there is room for one. On a phone the pair
+   becomes two lines, in the order they are read: what it is, then what it
+   says. Nothing is hidden at any width; the six illustrations and the whole
+   technical record are all still there, one column wide.
+   =========================================================================== */
+
+/* Below this the top bar cannot hold three labels, a wordmark and an action at
+   once. The labels are clipped rather than removed, so the links keep their
+   accessible names and a screen reader still hears "Corrections". */
+@media (max-width: 1100px) {
+  .topnav__label { position: static; }
+  .topnav a { padding: 0 9px; }
+  .topbar__in { gap: var(--s-2); }
+
+  /* Two abreast rather than three: the illustrations are drawn to a fixed
+     measure and a third column at this width squeezes them below it. */
+  .feature-grid { grid-template-columns: repeat(2, 1fr); column-gap: var(--s-5); }
+}
+
+@media (max-width: 720px) {
+  .check--hero .check__go { padding: 0 16px; }
+  .band { padding-block: var(--s-8); }
+
+  .plate { margin-top: var(--s-7); padding: var(--s-4); }
+  .plate__panel { padding: var(--s-4); }
+  .demo__label { margin-bottom: var(--s-3); font-size: clamp(16px, 2.8vw, 20px); }
+  .tryrow { margin-bottom: var(--s-4); }
+  .try { max-width: 100%; font-size: clamp(14px, 2vw, 16px); }
+  .plate .specimen { font-size: clamp(16px, 4.8vw, 20px); }
+  .plate .specimen__note { margin-top: var(--s-4); font-size: clamp(16px, 2.8vw, 20px); line-height: 1.45; }
+
+  .how-section { padding-inline: calc(var(--gutter) + 5vw); }
+  .how-section .section-heading h2 {
+    font-size: clamp(30px, 9vw, 44px);
+    line-height: 1.12;
+    white-space: normal;
+    text-wrap: balance;
+  }
+  .feature-copy p { font-size: clamp(16px, 2.5vw, 18px); line-height: 1.5; }
+  .qa > summary { font-size: clamp(17px, 3vw, 22px); gap: var(--s-4); }
+  /* A step under the question (17px at phone width), so the answer reads as
+     the quieter half of the pair rather than a second heading. */
+  .qa__body { font-size: clamp(15px, 2.5vw, 18px); line-height: 1.5; }
+  .faq { margin-top: var(--s-6); }
+
+  /* Sized off the viewport alone so "should be checked?" keeps fitting its
+     line from 320px up; the box gives up some side padding to make room. */
+  .closer { padding-inline: 20px; }
+  .closer__title {
+    font-size: clamp(24px, 8.6vw, 40px);
+    line-height: 1.12;
+    white-space: normal;
+    text-wrap: balance;
+  }
+  /* `balance` halves the sentence into two short lines; a plain wrap at 14em
+     breaks after "what" instead, which runs wider without leaving "finds."
+     alone on the second line. */
+  .closer__lede { max-width: 14em; font-size: clamp(16px, 2.5vw, 18px); line-height: 1.3; text-wrap: wrap; }
+  .closer .cta { min-height: 52px; padding-inline: 24px; font-size: clamp(18px, 3vw, 22px); }
+
+  .feature-grid { margin-top: 56px; grid-template-columns: 1fr; row-gap: var(--s-6); }
+  /* One card at a time, so the description no longer has to hold a shared
+     baseline with a card beside it. Reserving four lines here only adds a
+     gap under the short ones. */
+  .feature-copy p { min-height: 0; }
+
+  .result-page, .scan-page { padding-block: var(--s-5) var(--s-8); gap: var(--s-7); }
+  .result-summary { padding: var(--s-5) var(--s-5) var(--s-5); }
+  .scan-panel { padding: var(--s-5); }
+  .findings-panel, .address-panel, .records-panel { padding-inline: var(--s-5); }
+  .help-panel, .feedback-panel, .scan-page > .record-fold { padding-inline: var(--s-5); }
+
+  /* The label and the thing it labels, stacked. */
+  .finding-row, .rule-row {
+    grid-template-columns: 1fr;
+    gap: var(--s-2);
+  }
+  /* A tag is as wide as its word. In a one-column grid it would otherwise
+     stretch to the row and stop reading as a tag. */
+  .finding-row > *, .rule-row > * { justify-self: start; }
+  .rule-row__marks { display: flex; align-items: baseline; gap: var(--s-3); }
+  .rule-row__marks .row-detail { margin-top: 0; }
+
+  .data-list > div { grid-template-columns: 1fr; gap: 2px; }
+
+  .summary-meta, .summary-footer { flex-direction: column; align-items: flex-start; gap: var(--s-2); }
+  .address-heading { flex-wrap: wrap; }
+
+  /* The status chip and the timing belong with the source name rather than
+     pushed to an edge the name has already reached. */
+  /* The chevron stays on the first line with the title; the status and the
+     timing drop below it. Ordering the marker explicitly is the only way to
+     keep a ::after from falling to the end of a wrapped flex row. */
+  .record-fold > summary { flex-wrap: wrap; }
+  .record-fold > summary > span:first-child { order: 1; flex: 1 1 auto; }
+  .record-fold > summary::after { order: 2; }
+  .source-meta, .record-hint { order: 3; flex-basis: 100%; margin-left: 0; }
+
+  .contribution-heading { flex-direction: column; align-items: flex-start; gap: var(--s-2); }
+  .contribution-foot { flex-wrap: wrap; gap: var(--s-2); }
+  .contribution-track { width: 100%; }
+  .model-overview { gap: var(--s-4); }
+
+  .source-controls { align-items: flex-start; }
+  .action-row .btn { flex: 1 1 auto; }
+}
+
+@media (max-width: 560px) {
+  .brand__name { font-size: 16px; }
+  .topbar__in { padding-inline: 16px; gap: 8px; }
+  .topnav { gap: 0; }
+  .topnav button { padding-inline: 8px; }
+  .topbar__spacer { min-width: 0; }
+  .check--hero .check__row { padding: 8px 8px 8px 14px; }
+  .check--hero .check__input { font-size: 16px; }
+  .check--hero .check__go { min-height: 48px; font-size: 16px; }
+  /* The example address has to fit whole, so the button gives up its word
+     and keeps the icon (the word stays as its accessible name). */
+  .check__go { justify-content: center; padding: 0; aspect-ratio: 1; }
+  .check--hero .check__go { padding: 0; }
+  .check__go span {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+}
+
+/* ===========================================================================
+   Print
+
+   A printed result is a record, so everything the screen keeps folded away is
+   opened by script before printing and the controls that only work in a
+   browser are dropped. The glass goes with them: a lit edge and a drop shadow
+   are a screen effect, and on paper they come out as grey haze around every
+   panel.
+   =========================================================================== */
+
+@media print {
+  :root {
+    color-scheme: light;
+    --paper: #fff;
+    --paper-2: #f2f3f7;
+    --sheet: #fff;
+    --card: #fff;
+    --card-2: #fff;
+    --ink: #08080a;
+    --ink-2: #35363c;
+    --ink-3: #63656e;
+    --ink-blue: #1f5fd8;
+    --on-blue: #fff;
+    --blue-wash: #eaf0fe;
+    --safe: var(--ink-blue);
+    --safe-field: var(--blue-wash);
+    --warn: #8a5407;
+    --warn-field: #fdf5e6;
+    --risk: #8a140d;
+    --risk-light: #8a140d;
+    --rule: #ddd;
+    --rule-2: #ccc;
+  }
+  .topbar, .tray, .scrim, .skip, .no-export, .record-nav { display: none !important; }
+
+  body { background: #fff; }
+  .result-page, .scan-page {
+    max-width: none;
+    padding: 0;
+    gap: var(--s-6);
+  }
+  .glass-panel, .feature-art {
+    border: 1px solid #ccc;
+    background: #fff;
+    box-shadow: none;
+  }
+  .summary-advice { background: #fff; border-color: #999; }
+
+  /* A section must not be split across a page break where the split would
+     separate a heading from the first thing it introduces. */
+  .result-section, .finding-row, .rule-row, .contribution, .source-record {
+    break-inside: avoid;
+  }
+  .result-summary { break-after: avoid; }
+  .fold-content { display: block; }
+  .value-fold pre { max-height: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+/* Controls remain legible and reachable at every page width. */
+.topnav button, .text-action, .record-nav [role="tab"], .source-controls select { min-height: 44px; }
+.text-action { display: inline-flex; align-items: center; }
+.illustration-label, .status-label, .page-heading > span, .summary-advice h2 { text-transform: none; letter-spacing: -.01em; font-size: 13px; }
+.feature-art { overflow: visible; }
+.address-fragment { white-space: normal; overflow-wrap: anywhere; }
+.status-label { padding: 4px 10px; border: 1px solid currentColor; border-radius: var(--r-pill); width: fit-content; }
+.summary-advice h2 { font-size: var(--t-base); }
+.summary-limit { padding-left: 0; border-left: 0; }
+.result-summary::before { display: none; }
+.record-fold, .result-section { scroll-margin-top: 24px; }
+.record-nav [role="tab"] { display: inline-flex; align-items: center; }
+.result-section .section-heading h2 { font-size: clamp(26px, 3vw, 34px); }
+.value-fold pre { font-size: 13px; }
+.source-controls select { font-size: 15px; }
+.help-panel > summary { font-size: 17px; }
+.hero .plate { max-width: 1120px; margin-inline: auto; padding: 40px; }
+.hero .plate__panel { padding: 24px; }
+.export-note { padding-block: 24px; }
+@media (max-width: 560px) {
+  .hero .plate { padding: 16px; }
+  .hero .plate__panel { padding: 16px; }
+  .topnav { gap: 0; }
+  .scan-step { flex-direction: column; gap: 4px; }
+  .step-detail { text-align: left; overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-panel, .feature-art, .check__row, .plate, .closer { background: var(--card); box-shadow: none; }
+  .topbar, .scrim { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .topbar { background: var(--paper); }
+}
+
+.history-secondary { padding: 24px 16px 8px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--ink-3); }
+.history-secondary p { margin-bottom: 8px; }
+/* Two actions sit here now, and inline-block buttons with no separator read as
+   one run-on phrase ("Review corrections Clear this list"). */
+.history-secondary { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.history-secondary p { margin-bottom: 0; }
+.finding-group > h3, .address-heading h3 { text-transform: none; letter-spacing: -.01em; font-size: 15px; }
+.try { min-height: 44px; padding: 8px 12px; }
+@media (max-width: 720px) { .try { min-height: 34px; padding: 5px 11px; } }
+.feature-copy { flex: 1; }
+.feature-copy h3 { min-height: 1.3em; }
+.feature-art { flex: none; }
+button:disabled { opacity: .65; cursor: wait; }
+
+@media (max-width: 560px) { :root { --gutter: 16px; } }
+.brand { min-height: 44px; }

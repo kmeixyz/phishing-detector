@@ -1,0 +1,234 @@
+/* Shared color, type, spacing, surface, and motion tokens.
+   Home, progress, results, and trays use the same glass treatment.
+   Verdict colors identify status without replacing the neutral page surface. */
+
+:root {
+  color-scheme: light;
+
+  /* --- ground and ink ----------------------------------------------------
+     White, and two greys that are faintly cool rather than neutral. The cool
+     cast is what stops a page of grey cards on white reading as unfinished:
+     it gives the greys somewhere to be from. */
+  --paper:     #f5f5f7;   /* the page itself */
+  --paper-2:   #f2f3f7;   /* recessed: wells, tracks, stripes */
+  --sheet:     #ffffff;   /* raised: panels, the check bar, the history tray */
+
+  /* The large soft-grey block a feature illustration sits in. It is a shallow
+     gradient rather than a flat fill so a 400px square of grey has some light
+     falling across it. */
+  --card:      #eff1f7;
+  --card-2:    #e3e6ef;
+
+  --ink:       #08080a;   /* headings: effectively black, and meant to be */
+  --ink-2:     #35363c;   /* body prose */
+  /* Captions, meta, the quiet half of an address. Set against --card-2, the
+     darkest of the glass grounds, rather than against white: almost every
+     caption in the product now sits on a panel, and the old value cleared
+     4.5:1 on paper while measuring 3.8 where it is actually read. */
+  --ink-3:     #63656e;
+
+  --rule:      #eaeaec;   /* hairline between related things */
+  --rule-2:    #dcdce1;   /* heavier: section boundaries */
+  /* The boundary of anything a person can type into or press. It is a
+     separate token from --rule-2 because WCAG 1.4.11 asks a control's own
+     edge to clear 3:1 against what it sits on, and a hairline that reads
+     nicely between two paragraphs measures 1.2 there. This one reaches 3.2
+     on white. */
+  --edge-ctl:  #93949b;
+
+  /* --- the accent ---------------------------------------------------------
+     One blue, and the only saturated colour on a page that has not returned a
+     verdict. */
+  /* Darkened for the same reason as --ink-3: a link on a glass panel was
+     measuring 3.5:1. This value clears 4.5 on the panel and, as the primary
+     button's fill, lifts white-on-blue from 4.4 to 5.7 at the same time. */
+  --ink-blue:    #1f5fd8;
+  --ink-blue-hi: #1749ad;
+  --on-blue:     #ffffff;
+  --blue-wash:   #eaf0fe;
+  --blue-edge:   #c3d6fd;
+  --result-safe-a:   var(--blue-wash);
+  --result-safe-b:   var(--blue-edge);
+  --result-risk-a:   #ffdbd5;
+  --result-risk-b:   #f4b8ab;
+  --result-unsure-a: #fffbd7;
+  --result-unsure-b: #ffefa0;
+
+  /* The check bar's own tint — its focus ring, kept separate from --ink-blue
+     so it can move independently of the rest of the accent. */
+  --check-accent:    #6B9AF2;
+
+  /* The go-button is the same blue as every other primary action, and it is
+     no longer lightened. The 65% mix that used to sit here read as a softer
+     button, but it put white text at 2.9:1 on the one control the whole
+     landing page exists to get pressed. Full strength clears 4.5. */
+  --check-go-accent: var(--ink-blue);
+
+  /* What sits on top of the check field: real input text goes true black,
+     the sample address in the placeholder fades to a light grey. */
+  --check-text:        var(--ink);
+  --check-placeholder: #63656d;
+
+  /* --- the three verdicts -------------------------------------------------
+     Each is a family: `ink` for text and marks, `field` for the large ground
+     it sits on, `edge` for the border between them. Never mix an ink with
+     another family's field.
+
+     Safe is a pale field with dark ink. Risk inverts — a deep field with pale
+     ink — because it is the one state that should raise the volume.
+
+     Safe rides the same blue as the accent rather than green: it is the
+     colour every worked example on the landing page already uses for "this
+     is the real domain", and red/yellow/blue reads apart for a colour-blind
+     visitor more reliably than red/yellow/green does. */
+  --safe:        var(--ink-blue);
+  --safe-field:  var(--blue-wash);
+  --safe-edge:   var(--blue-edge);
+
+  --warn:        #8a5407;
+  --warn-field:  #fdf5e6;
+  --warn-edge:   #ecd39d;
+
+  /* A brighter, more purely yellow ink than --warn, kept as its own token
+     rather than brightening --warn everywhere: this one exists to sit next
+     to red and stay unmistakably a different colour from it, for the
+     three-way danger/unsure/safe comparison. --warn's darker, browner gold
+     is tuned for its own job (notices, timeout chips) and stays as is. */
+  --unsure:      #b37b00;
+  --unsure-edge: #f0d878;
+
+  /* Darkened from #9e1810 for the same reason as --ink-3 and --ink-blue: as
+     text on the risk card's own gradient it was clearing 6.3:1 at the pale
+     end but only 4.74 at the deep end — technically past 4.5 but with almost
+     no margin. This value reaches 7.5 and 5.6 at the two ends. */
+  --risk:        #8a140d;   /* risk as ink, on paper */
+  --risk-field:  #82170f;   /* risk as a flooded field */
+  --risk-on:     #fff0ee;   /* text on that field */
+  --risk-edge:   #f3c4bd;
+  --risk-light:  #e5484d;   /* a lighter risk red, for accenting text on paper */
+
+  /* --- type ---------------------------------------------------------------
+     No webfont. This tool is meant to run on a machine with no network, and a
+     landing page that waits on a CDN it cannot reach is a worse typographic
+     outcome than the system stack. `-apple-system` first is deliberate: on a
+     Mac it resolves to SF Pro *and* switches between the Text and Display
+     opticals at around 20px on its own, which is the correction that makes a
+     56px headline and a 15px caption both look drawn on purpose. The named
+     faces after it are for the browsers that will not do that themselves.
+
+     Technical values use the same system family. Their .mono class disables
+     ligatures and uses tabular numbers where the values need comparing. */
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+          "SF Pro", system-ui, "Segoe UI Variable Text", "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+          "Liberation Mono", monospace;
+
+  /* A ~1.27 modular scale off a 17px body, rounded to whole pixels. */
+  --t-2xs:  11px;
+  --t-xs:   13px;
+  --t-sm:   15px;
+  --t-base: 17px;
+  --t-md:   20px;
+  --t-lg:   26px;
+  --t-xl:   34px;
+  --t-2xl:  44px;
+  --t-3xl:  58px;
+
+  --lh-tight: 1.04;
+  --lh-snug:  1.22;
+  --lh-body:  1.55;
+
+  /* Tracking is where most of the character lives.
+
+     SF Pro is spaced for continuous text at reading size. Left alone, a 56px
+     headline in it looks loose and slightly amateur — the letters float. Every
+     display line here is pulled in by 3.6% so the words set as one shape. The
+     correction runs the other way under 14px, where the same face gets tight
+     and needs opening back up. */
+  --track-display: -0.036em;
+  --track-tight:   -0.021em;
+  --track-wide:     0.012em;
+
+  /* --- space: a 4px grid, named by use -----------------------------------
+     The top of this scale is generous on purpose. What separates a page that
+     reads as considered from one that reads as a stack of divs is mostly the
+     size of the gap between two sections, and it wants to be far bigger than
+     feels reasonable while writing the CSS. */
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  24px;
+  --s-6:  32px;
+  --s-7:  48px;
+  --s-8:  72px;
+  --s-9:  112px;
+
+  /* --- radius -------------------------------------------------------------
+     Size tracks the object. A control is stamped; a panel is cut; a card is
+     rounded generously enough to read as a physical tile; a field flooding the
+     page has no radius at all, because it is not a card. */
+  --r-mark:  5px;
+  --r-ctl:   11px;
+  --r-panel: 18px;
+  --r-card:  26px;
+  --r-pill:  999px;
+
+  /* --- elevation ----------------------------------------------------------
+     Grouping is done with space and a hairline, never with a shadow, so that a
+     shadow reliably signals a thing that genuinely floats above the page. */
+  --lift:      0 1px 2px rgba(9, 11, 20, .05), 0 8px 28px rgba(9, 11, 20, .06);
+  --lift-over: 0 2px 8px rgba(9, 11, 20, .08), 0 24px 64px rgba(9, 11, 20, .18);
+
+  /* --- glass ---------------------------------------------------------------
+     A bevel-lit border, a top-down catch light, and the dark return beneath
+     it that gives the pane thickness — the same construction as the section
+     dock on the personal site (itself lifted from this file's own composer
+     bar). White-based, so it reads as light on glass in both colour schemes;
+     the tint comes from whatever background each glass surface is layered
+     over, not from these tokens. */
+  --glass-edge:  1px solid rgba(255, 255, 255, .2);
+  --glass-sheen:
+    linear-gradient(180deg, rgba(255, 255, 255, .2) 0%, rgba(255, 255, 255, .05) 20%, transparent 46%),
+    linear-gradient(0deg, rgba(255, 255, 255, .08) 0%, transparent 15%);
+  --glass-bevel:
+    inset 0 1px 0 rgba(255, 255, 255, .8),
+    inset 1px 0 0 rgba(255, 255, 255, .35),
+    inset 0 -1px 0 rgba(0, 0, 0, .06);
+
+  /* --- motion -------------------------------------------------------------
+     One curve, used everywhere: a hard start that decelerates almost to a stop
+     at the end. It is what makes a panel opening feel like it has weight
+     rather than like a value changing. Nothing animates on its own except
+     sections arriving as they are scrolled to and the progress page's loading
+     placeholder; the rest is answering a person's action. */
+  --ease: cubic-bezier(.32, .72, 0, 1);
+  --fast: 170ms var(--ease);
+  --slow: 420ms var(--ease);
+  --reveal: 860ms cubic-bezier(.16, .84, .28, 1);
+
+  /* --- layout ------------------------------------------------------------- */
+  --measure: 60ch;   /* the reading column for plain-English prose */
+  /* A soft outer ceiling, well above any desktop width the gutter below would
+     ever reach on its own — it only starts doing anything on the small
+     handful of screens wider than that, so it never fights the gutter's own
+     10% for the widths people actually read this on. */
+  --page:    2000px;
+  /* Fixed at 10% of the viewport on each side once a screen is wide enough to
+     count as a desktop (the 860px breakpoint everything else in the page
+     already collapses at) — a column with real air around it, rather than the
+     page filling whatever width the window happens to be. Below that
+     breakpoint this reverts to the old small, mostly-fixed inset; percentage
+     margins that size would leave a phone with barely anything to read. */
+  --gutter:  clamp(48px, 10vw, 200px);
+}
+
+@media (max-width: 860px) {
+  :root { --gutter: clamp(20px, 5vw, 48px); }
+}
+
+/* The site is light-only. There is no dark palette and no
+   `prefers-color-scheme: dark` block: `color-scheme: light` above and the
+   matching <meta> in base.html keep form controls and scrollbars light even
+   when the visitor's OS or browser prefers dark. */
